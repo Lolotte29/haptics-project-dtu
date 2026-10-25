@@ -8,7 +8,7 @@ Real-time musical feature extraction for a Unity haptics project. Primary use ca
 |------|---------|
 | `unity/` | Unity project root (open this folder in Unity Hub). |
 | `unity/Assets/Scripts/Dsp/` | Unity-free C# DSP code (FFT, RMS, spectral centroid/flux, onset detection). Own asmdef, `noEngineReferences`. **Single source of truth.** |
-| `unity/Assets/Scripts/Unity/` | Thin MonoBehaviours that call the DSP code (e.g. `AudioFeatureBehaviour`). |
+| `unity/Assets/Scripts/Unity/` | Thin MonoBehaviours: `ChoirHost` (pipeline + HUD) and `AudioSourceInput` (audio input adapter). |
 | `dsp/Haptics.Dsp/` | Plain `netstandard2.1` project that compiles the files above, so they can be built and tested without Unity. |
 | `dsp/Haptics.Dsp.Tests/` | xUnit tests for the DSP code. |
 | `samples/` | Short test audio and recorded feature dumps (WAV via Git LFS). |
@@ -29,8 +29,8 @@ Real-time musical feature extraction for a Unity haptics project. Primary use ca
 
 1. `git lfs install` (once), then clone the repo.
 2. Create the Unity project **inside `unity/`** (Unity Hub > New project > location `.../haptics-project-dtu/unity`, or open the folder if Unity is already initialised). Commit the generated `ProjectSettings/`, `Packages/manifest.json` and all `.meta` files. Keep *Version Control: Visible Meta Files* and *Asset Serialization: Force Text* enabled.
-3. Add `AudioFeatureBehaviour` to a GameObject that has an `AudioSource`.
+3. See [docs/unity-setup.md](docs/unity-setup.md) for the scene setup.
 
 ## Features currently extracted
 
-RMS, spectral centroid, half-wave-rectified spectral flux, onset flag.
+Per singer: level, pitch (YIN), spectral centroid, onset. Ensemble: tension (roughness between voices), loudness. Output: one haptic stream (intensity + pulse).

@@ -34,18 +34,18 @@ input (VB-Cable now / mics later)
 ```
 
 - `unity/Assets/Scripts/Dsp/`: **Unity-free** DSP (own asmdef, `noEngineReferences`). Single source of truth. Must stay free of `UnityEngine`.
-- `unity/Assets/Scripts/Unity/`: thin MonoBehaviours bridging Unity audio to the DSP. Currently `AudioFeatureBehaviour` (one `FeatureExtractor`, reads `OnAudioFilterRead`, downmixes to mono).
+- `unity/Assets/Scripts/Unity/`: thin MonoBehaviours bridging Unity audio to the DSP. `ChoirHost` (owns the pipeline, debug HUD, optional `IHapticSink`) and `AudioSourceInput` (feeds an AudioSource, or a mic/VB-Cable device looped through it, into the host; channel i -> voice i).
 - `dsp/`: `Haptics.Dsp` compiles the Unity DSP files as `netstandard2.1`; `Haptics.Dsp.Tests` is xUnit. This is how you verify DSP without Unity.
 
 ## Current state (honest)
 
-Implemented: FFT, RMS, spectral centroid, half-wave spectral flux, simple adaptive-threshold onset detector, 6 passing unit tests, single-channel Unity wrapper.
+Implemented (all in `unity/Assets/Scripts/Dsp/`, 18 passing unit tests): FFT, RMS, spectral centroid/flux, adaptive onset detector (`FeatureExtractor`), YIN pitch (`Yin`), per-singer `VoiceProcessor`, N-voice `Choir`, `ChoirAnalyzer` (tension = Plomp-Levelt/Sethares roughness over the harmonic partials of every voice pair; `Scale` constant was calibrated on synthetic voices only), `HapticMapper` (one broadcast stream: smoothed intensity + onset pulse) and the `IHapticSink` interface. Unity side: `ChoirHost` + `AudioSourceInput`.
 
-**Not implemented / not tested in Unity:** multi-channel or multi-mic input, device selection, per-singer routing, pitch (F0), tempo/beat, vowel/timbre features, any haptic mapping, any Bluetooth/ESP code. `AudioFeatureBehaviour` has never been run inside Unity from this repo's tooling.
+**Not implemented / not tested in Unity:** the Unity scripts have never been run in the editor from this repo's tooling; no real choir audio has been tried (tension calibration and YIN cost on the audio thread, 4 voices x ~86 frames/s, are unmeasured); no true 4-mic input (`AudioSourceInput` only sees the channels of one AudioSource, which Unity may down-mix, so 4 real mics need another input adapter, e.g. keijiro/Lasp (Unlicense, desktop, per-device/channel input; multi-stream behaviour unverified) or one adapter per device); tempo/beat; vowel/timbre; Bluetooth/ESP code. RASTA (AAU, SMC paper) has no public code, only the paper.
 
 ## Likely next steps (suggestions, not commitments)
 
-1. Input abstraction: a source that yields N mono channels with a known sample rate, with implementations for VB-Cable/AudioSource and (later) direct mics. Decide mic strategy: Unity's `Microphone` API is per device and high latency; a multi-channel interface may need a native plugin (ASIO/WASAPI) for low latency.
+1. (Basic version done: `Choir.Process(interleaved, frames, channels)`; real multi-mic adapter still open.) Input abstraction: a source that yields N mono channels with a known sample rate, with implementations for VB-Cable/AudioSource and (later) direct mics. Decide mic strategy: Unity's `Microphone` API is per device and high latency; a multi-channel interface may need a native plugin (ASIO/WASAPI) for low latency.
 2. A multi-channel host (e.g. `ChoirFeatureHost`) holding one `FeatureExtractor` per channel, with a thread-safe, allocation-free handoff of the latest `FeatureFrame` per singer to the main thread.
 3. Voice-appropriate features: monophonic pitch (YIN/autocorrelation) per singer, voiced/unvoiced, smoothed loudness, onsets. Beware cross-talk (mic bleed) between singers.
 4. Offline test material: short recordings of singing in `samples/` (WAV via Git LFS) with expected feature dumps, so DSP can be validated without Unity.
