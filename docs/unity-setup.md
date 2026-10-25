@@ -8,7 +8,6 @@
 git lfs install
 git clone https://github.com/Lolotte29/haptics-project-dtu
 cd haptics-project-dtu
-git checkout init/project-scaffold
 ```
 
 ## 2. Create the project files
