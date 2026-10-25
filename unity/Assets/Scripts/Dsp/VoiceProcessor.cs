@@ -7,6 +7,11 @@ namespace Haptics.Dsp
     {
         public float Rms;
         public float SpectralCentroid;
+        public float SpectralSpread;
+        public float SpectralSkewness;
+        public float SpectralEntropy;
+        public float ZeroCrossingRate;
+        public float SpectralFlux;
         public bool Onset;
         /// <summary>Fundamental frequency in Hz, or 0 when the voice is silent/unvoiced.</summary>
         public float PitchHz;
@@ -69,6 +74,11 @@ namespace Haptics.Dsp
             {
                 Rms = f.Rms,
                 SpectralCentroid = f.SpectralCentroid,
+                SpectralSpread = f.SpectralSpread,
+                SpectralSkewness = f.SpectralSkewness,
+                SpectralEntropy = f.SpectralEntropy,
+                ZeroCrossingRate = f.ZeroCrossingRate,
+                SpectralFlux = f.SpectralFlux,
                 Onset = f.Onset,
                 PitchHz = pitch,
                 PitchConfidence = conf,

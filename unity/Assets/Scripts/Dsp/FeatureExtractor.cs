@@ -76,11 +76,13 @@ namespace Haptics.Dsp
         {
             // Oldest sample sits at _writePos.
             double sumSq = 0;
+            int crossings = 0;
             for (int i = 0; i < _frameSize; i++)
             {
                 float v = _ring[(_writePos + i) % _frameSize];
                 _frame[i] = v;
                 sumSq += v * v;
+                if (i > 0 && (v >= 0f) != (_frame[i - 1] >= 0f)) crossings++;
             }
 
             _fft.Magnitude(_frame, _mag);
@@ -94,6 +96,25 @@ namespace Haptics.Dsp
                 if (d > 0) flux += d;
                 _prevMag[k] = _mag[k];
             }
+
+            // Spectral shape around the centroid (MathWorks definitions: spread, skewness, normalised entropy).
+            double centroid = den > 1e-9 ? num / den : 0.0;
+            double m2 = 0, m3 = 0, entropy = 0;
+            if (den > 1e-9)
+            {
+                for (int k = 0; k < _mag.Length; k++)
+                {
+                    double dev = k * _binHz - centroid;
+                    m2 += dev * dev * _mag[k];
+                    m3 += dev * dev * dev * _mag[k];
+                    double p = _mag[k] / den;
+                    if (p > 1e-12) entropy -= p * Math.Log(p);
+                }
+                m2 /= den;
+                m3 /= den;
+                entropy /= Math.Log(_mag.Length);
+            }
+            double spread = Math.Sqrt(m2);
 
             float fluxF = (float)flux;
             bool onset = false;
@@ -112,7 +133,11 @@ namespace Haptics.Dsp
             return new FeatureFrame
             {
                 Rms = (float)Math.Sqrt(sumSq / _frameSize),
-                SpectralCentroid = den > 1e-9 ? (float)(num / den) : 0f,
+                SpectralCentroid = (float)centroid,
+                SpectralSpread = (float)spread,
+                SpectralSkewness = spread > 1e-9 ? (float)(m3 / (spread * spread * spread)) : 0f,
+                SpectralEntropy = (float)entropy,
+                ZeroCrossingRate = (float)crossings / (_frameSize - 1),
                 SpectralFlux = fluxF,
                 Onset = onset,
             };

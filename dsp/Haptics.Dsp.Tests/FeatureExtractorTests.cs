@@ -54,6 +54,30 @@ public class FeatureExtractorTests
     }
 
     [Fact]
+    public void TimbreDescriptorsSeparateToneFromNoise()
+    {
+        var rng = new Random(3);
+        var noise = new float[Sr];
+        for (int i = 0; i < noise.Length; i++) noise[i] = (float)(rng.NextDouble() * 2 - 1) * 0.5f;
+
+        var tone = Run(Sine(1000, 1))[^1];
+        var nz = Run(noise)[^1];
+
+        Assert.True(tone.SpectralEntropy < 0.3f, $"tone entropy {tone.SpectralEntropy}");
+        Assert.True(nz.SpectralEntropy > 0.8f, $"noise entropy {nz.SpectralEntropy}");
+        Assert.True(nz.SpectralSpread > tone.SpectralSpread * 5);
+        Assert.True(nz.ZeroCrossingRate > tone.ZeroCrossingRate);
+    }
+
+    [Fact]
+    public void ZeroCrossingRateOfSineMatchesFrequency()
+    {
+        // A sine crosses zero twice per period: rate ~ 2*f/sr.
+        float zcr = Run(Sine(1000, 1))[^1].ZeroCrossingRate;
+        Assert.InRange(zcr, 2 * 1000f / Sr * 0.95f, 2 * 1000f / Sr * 1.05f);
+    }
+
+    [Fact]
     public void ChunkSizeDoesNotChangeResults()
     {
         var x = Sine(1000, 0.5f);

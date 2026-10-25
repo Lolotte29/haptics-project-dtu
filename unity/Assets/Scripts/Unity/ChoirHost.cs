@@ -60,7 +60,7 @@ public class ChoirHost : MonoBehaviour
             GUILayout.Label($"Voice {i + 1}: {note,-5} {v.PitchHz,6:0.0} Hz  level {v.Rms:0.000}");
         }
         var f = Frame;
-        GUILayout.Label($"Tension {f.Tension:0.00}   Loudness {f.Loudness:0.000}   Voiced {f.VoicedCount}");
+        GUILayout.Label($"Roughness {f.Roughness:0.00}   Loudness {f.Loudness:0.000}   Voiced {f.VoicedCount}");
         GUILayout.Label($"Haptic intensity {Haptic.Intensity:0.00}");
         GUILayout.HorizontalSlider(Haptic.Intensity, 0f, 1f);
         GUILayout.EndArea();

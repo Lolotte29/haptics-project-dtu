@@ -68,8 +68,8 @@ public class ChoirTests
     public void ClusterIsMoreTenseThanMajorChord()
     {
         // C major triad + octave versus a semitone cluster.
-        float major = RunChoir(new[] { 261.6, 329.6, 392.0, 523.3 }).Frame.Tension;
-        float cluster = RunChoir(new[] { 261.6, 277.2, 293.7, 311.1 }).Frame.Tension;
+        float major = RunChoir(new[] { 261.6, 329.6, 392.0, 523.3 }).Frame.Roughness;
+        float cluster = RunChoir(new[] { 261.6, 277.2, 293.7, 311.1 }).Frame.Roughness;
         Assert.True(cluster > major * 2, $"cluster={cluster} major={major}");
         Assert.InRange(cluster, 0.3f, 1f);
     }
@@ -77,16 +77,16 @@ public class ChoirTests
     [Fact]
     public void MinorSecondIsMoreTenseThanFifth()
     {
-        float fifth = RunChoir(new[] { 261.6, 392.0 }).Frame.Tension;
-        float second = RunChoir(new[] { 261.6, 277.2 }).Frame.Tension;
+        float fifth = RunChoir(new[] { 261.6, 392.0 }).Frame.Roughness;
+        float second = RunChoir(new[] { 261.6, 277.2 }).Frame.Roughness;
         Assert.True(second > fifth * 2, $"second={second} fifth={fifth}");
     }
 
     [Fact]
-    public void SingleVoiceHasNoTension()
+    public void SingleVoiceHasNoRoughness()
     {
         var f = RunChoir(new[] { 261.6 }).Frame;
-        Assert.Equal(0f, f.Tension);
+        Assert.Equal(0f, f.Roughness);
         Assert.Equal(1, f.VoicedCount);
     }
 
@@ -97,7 +97,7 @@ public class ChoirTests
         var buf = new float[441 * 4];
         for (int i = 0; i < 100; i++) choir.Process(buf, 441, 4);
         Assert.Equal(0, choir.Frame.VoicedCount);
-        Assert.Equal(0f, choir.Frame.Tension);
+        Assert.Equal(0f, choir.Frame.Roughness);
         Assert.False(choir.Frame.Onset);
     }
 
@@ -127,7 +127,7 @@ public class ChoirTests
         Assert.Equal(0f, quiet.Intensity);
         Assert.False(quiet.Pulse);
 
-        var hit = m.Map(new ChoirFrame { Loudness = 0.3f, Tension = 1f, Onset = true });
+        var hit = m.Map(new ChoirFrame { Loudness = 0.3f, Roughness = 1f, Onset = true });
         Assert.True(hit.Pulse);
         Assert.InRange(hit.Intensity, 0.01f, 1f);
 

@@ -33,7 +33,7 @@ Unity Hub won't create a project inside a folder that already has content, so ge
 
 ## 5. Try it
 
-**A. Without hardware:** give the AudioSource a clip of singing, tick *Loop* and *Play On Awake*, press Play. The HUD (top-left) shows pitch, note name and level for each voice, plus tension and haptic intensity.
+**A. Without hardware:** give the AudioSource a clip of singing, tick *Loop* and *Play On Awake*, press Play. The HUD (top-left) shows pitch, note name and level for each voice, plus roughness and haptic intensity.
 
 **B. With VB-Cable:**
 - On `AudioSourceInput` tick *Use Microphone*. The console lists device names at start; paste the VB-Cable one (typically `CABLE Output (VB-Audio Virtual Cable)`) into *Microphone Device*, or leave it empty for the default input.
@@ -43,7 +43,7 @@ Unity Hub won't create a project inside a folder that already has content, so ge
 ## 6. What to check
 
 - Singing a steady note shows a stable pitch and the right note name.
-- Two simultaneous notes a semitone apart give clearly higher *Tension* than a fifth. If the numbers feel too small or too large, tune `ChoirAnalyzer.Scale`.
+- Two simultaneous notes a semitone apart give clearly higher *Roughness* than a fifth. If the numbers feel too small or too large, tune `ChoirAnalyzer.Scale`.
 - Open the Profiler (Window > Analysis > Profiler) and look at the audio thread's CPU, since 4 YIN trackers run there. If it is heavy, tell the agent so the pitch hop can be reduced.
 - No errors in the console, especially compile errors in the scripts (they have not been compiled in Unity yet).
 

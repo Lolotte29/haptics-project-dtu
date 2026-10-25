@@ -33,4 +33,4 @@ Real-time musical feature extraction for a Unity haptics project. Primary use ca
 
 ## Features currently extracted
 
-Per singer: level, pitch (YIN), spectral centroid, onset. Ensemble: tension (roughness between voices), loudness. Output: one haptic stream (intensity + pulse).
+Per singer: level, pitch (YIN), spectral centroid/spread/skewness/entropy/flux, zero-crossing rate, onset. Ensemble: roughness between voices (sensory dissonance), loudness. Harmonic (tonal) tension is not implemented yet. Output: one haptic stream (intensity + pulse).

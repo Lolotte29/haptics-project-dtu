@@ -6,7 +6,7 @@ namespace Haptics.Dsp
     public struct ChoirFrame
     {
         /// <summary>Sensory dissonance between voices, 0 (consonant/none) .. 1 (very rough).</summary>
-        public float Tension;
+        public float Roughness;
         /// <summary>Loudest voice RMS.</summary>
         public float Loudness;
         /// <summary>True if any voice had an onset since the previous frame.</summary>
@@ -15,7 +15,7 @@ namespace Haptics.Dsp
     }
 
     /// <summary>
-    /// Combines per-singer pitches into a tension value using Plomp-Levelt roughness (Sethares' parametrisation)
+    /// Combines per-singer pitches into a roughness value using Plomp-Levelt roughness (Sethares' parametrisation)
     /// over the harmonic partials of every pair of voiced singers.
     /// </summary>
     public static class ChoirAnalyzer
@@ -57,8 +57,8 @@ namespace Haptics.Dsp
                 }
             }
 
-            float tension = norm > 1e-12f ? Math.Min(1f, sum / norm * Scale) : 0f;
-            return new ChoirFrame { Tension = tension, Loudness = loudness, Onset = onset, VoicedCount = voiced };
+            float roughness = norm > 1e-12f ? Math.Min(1f, sum / norm * Scale) : 0f;
+            return new ChoirFrame { Roughness = roughness, Loudness = loudness, Onset = onset, VoicedCount = voiced };
         }
 
         /// <summary>Roughness of two pure tones (unit amplitudes).</summary>
