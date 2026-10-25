@@ -15,7 +15,7 @@ namespace Haptics.Dsp
     }
 
     /// <summary>
-    /// Combines per-singer pitches into a roughness value using Plomp-Levelt roughness (Sethares' parametrisation)
+    /// Combines per-singer pitches into a roughness value (Plomp-Levelt, Sethares parametrisation)
     /// over the harmonic partials of every pair of voiced singers.
     /// </summary>
     public static class ChoirAnalyzer
