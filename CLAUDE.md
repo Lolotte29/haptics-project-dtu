@@ -1,61 +1,51 @@
 # Project context
 
-Real-time musical feature extraction in Unity, for a haptics project (DTU). Read this before changing anything.
+Real-time musical feature extraction in Unity for a haptics project (DTU). Read this before changing anything.
 
 ## Goal
 
-Analyse live singing and turn it into features that will eventually drive haptic actuators.
+Analyse live singing and turn it into features that will drive haptic actuators.
 
-**Concept:** a music-enhancement idea. The singers do **not** wear anything. Selected **audience members** wear haptic bracelets and feel the music (e.g. each voice's rhythm/intensity/pitch movement) as vibration, adding a tactile layer to the live performance. **Very likely every wearer receives the same signal** (one broadcast haptic stream derived from the 4 voices, not per-wearer routing). So design the mapping layer as a single output stream (4 voices -> one haptic signal), and design the transport as one-to-many broadcast (e.g. BLE advertising/broadcast, or ESP-NOW style) rather than N individual connections. The number of bracelets is unknown and may be large; per-wearer assignment is not needed unless the user says otherwise.
+- **Concept:** a music-enhancement idea. Singers wear nothing. Selected **audience members** wear haptic bracelets (ESP, Bluetooth) and feel the music as vibration. Very likely **every wearer gets the same signal**: one broadcast stream derived from all voices, no per-wearer routing.
+- **Primary use case:** a 4-person women's choir, **one mic per singer** (4 mono channels). Don't hard-code "4" or a device: channel count and source are configuration.
+- **Real-time:** analysis runs on the audio thread. No allocations, locks, logging or Unity API calls there.
 
-- **Primary use case:** a 4-person women's choir (soprano/alto-style voices), **one microphone per singer**, so 4 independent mono channels analysed in parallel. Optimise for this first.
-- **Versatility matters:** the DSP and input layers must not hard-code "4 singers" or a specific audio device. Channel count, sample rate and source are configuration.
-- **Real-time is the constraint:** analysis runs on the audio thread in Unity. No allocations, no locks, no logging, no Unity API calls in the audio callback.
+## Status of the hardware
 
-## Hardware / input status
+- Input today: **VB-Audio Virtual Cable** (stereo). Later: several mics straight into the computer, either one multichannel interface or several devices (undecided).
+- Output (**not started**): ESP over Bluetooth to a bracelet. Only the `IHapticSink` interface exists.
 
-| Stage | Status |
-|-------|--------|
-| Audio input today | **VB-Audio Virtual Cable** (virtual device) feeding Unity. Used for development with recorded/played-back or routed audio. |
-| Audio input planned | Several physical microphones plugged directly into the computer (likely via an audio interface). Expect either multiple devices or one multi-channel device; not decided. |
-| Output (planned, **not started**) | An **ESP** (ESP32-class) controlled over **Bluetooth** driving haptic actuators on a **bracelet worn by audience members** (not by the singers). Do not build this yet; just keep the architecture ready for it (see below). |
-
-Open questions (ask the user, don't assume): exact mic/interface model, target latency budget, how many audience members/bracelets and how many actuators per bracelet, BLE vs Bluetooth Classic, how a single haptic stream is broadcast to many bracelets (BLE advertising vs per-device connections vs another radio), how the 4 voices are combined into that one stream (e.g. mix, strongest voice, or voices mapped to different actuators/frequency bands), and the acceptable end-to-end latency (mic to vibration).
+Open questions (ask the user, don't assume): mic/interface model, latency budget (mic to vibration), number of bracelets and actuators, BLE vs Classic and how one stream is broadcast to many bracelets, how 4 voices combine into one stream.
 
 ## Architecture
 
 ```
-input (VB-Cable now / mics later)
-   -> per-channel mono stream
-   -> FeatureExtractor (one instance per singer)      [pure C#, unity/Assets/Scripts/Dsp]
-   -> FeatureFrame per hop (RMS, centroid, flux, onset)
-   -> (future) mapping layer: features -> haptic commands
-   -> (future) transport: Bluetooth to ESP
+audio in (channel i = singer i)
+  -> VoiceProcessor x N : level, spectral shape (FeatureExtractor), YIN pitch   -> VoiceFrame
+  -> ChoirAnalyzer      : roughness between voices, loudness                    -> ChoirFrame
+  -> HapticMapper       : one smoothed intensity + onset pulse                  -> HapticFrame
+  -> IHapticSink        : (future) Bluetooth to ESP
 ```
 
-- `unity/Assets/Scripts/Dsp/`: **Unity-free** DSP (own asmdef, `noEngineReferences`). Single source of truth. Must stay free of `UnityEngine`.
-- `unity/Assets/Scripts/Unity/`: thin MonoBehaviours bridging Unity audio to the DSP. `ChoirHost` (owns the pipeline, debug HUD, optional `IHapticSink`) and `AudioSourceInput` (feeds an AudioSource, or a mic/VB-Cable device looped through it, into the host; channel i -> voice i).
-- `dsp/`: `Haptics.Dsp` compiles the Unity DSP files as `netstandard2.1`; `Haptics.Dsp.Tests` is xUnit. This is how you verify DSP without Unity.
+`Choir` wires the first two stages: `Choir.Process(interleavedSamples, frames, channels)`.
 
-## Current state (honest)
+- `unity/Assets/Scripts/Dsp/`: Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
+- `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline and mapper, HUD, optional sink) and `AudioSourceInput` (feeds an AudioSource, or a mic/VB-Cable device looped through it).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (20 tests).
 
-Implemented (all in `unity/Assets/Scripts/Dsp/`, 18 passing unit tests): FFT, RMS, spectral centroid/spread/skewness/entropy/flux and zero-crossing rate (the RASTA descriptor set, our own implementation), adaptive onset detector (`FeatureExtractor`), YIN pitch (`Yin`), per-singer `VoiceProcessor`, N-voice `Choir`, `ChoirAnalyzer` (**roughness** = Plomp-Levelt/Sethares sensory dissonance over the harmonic partials of every voice pair; it is NOT harmonic/tonal tension and the `Scale` constant was calibrated on synthetic voices only), `HapticMapper` (one broadcast stream: smoothed intensity + onset pulse) and the `IHapticSink` interface. Unity side: `ChoirHost` + `AudioSourceInput`.
+## Honest state
 
-**Not implemented / not tested in Unity:** the Unity scripts have never been run in the editor from this repo's tooling; no real choir audio has been tried (roughness calibration and YIN cost on the audio thread, 4 voices x ~86 frames/s, are unmeasured); no true 4-mic input (`AudioSourceInput` only sees the channels of one AudioSource, which Unity may down-mix, so 4 real mics need another input adapter, e.g. keijiro/Lasp (Unlicense, desktop, per-device/channel input; multi-stream behaviour unverified) or one adapter per device); **tonal/harmonic tension** (chords in a key context: needs key estimation plus a model such as Lerdahl tonal pitch space or the Chew/Herremans spiral-array tension; design not yet chosen); tempo/beat; vowel features; Bluetooth/ESP code. razvysme/Unity3D_Spectral_Analysis (the RASTA code) was reviewed and not adopted: no license, static single-instance state, blocks the main thread, no window function; we reimplemented its descriptors.
-
-## Likely next steps (suggestions, not commitments)
-
-1. (Basic version done: `Choir.Process(interleaved, frames, channels)`; real multi-mic adapter still open.) Input abstraction: a source that yields N mono channels with a known sample rate, with implementations for VB-Cable/AudioSource and (later) direct mics. Decide mic strategy: Unity's `Microphone` API is per device and high latency; a multi-channel interface may need a native plugin (ASIO/WASAPI) for low latency.
-2. A multi-channel host (e.g. `ChoirFeatureHost`) holding one `FeatureExtractor` per channel, with a thread-safe, allocation-free handoff of the latest `FeatureFrame` per singer to the main thread.
-3. Voice-appropriate features: monophonic pitch (YIN/autocorrelation) per singer, voiced/unvoiced, smoothed loudness, onsets. Beware cross-talk (mic bleed) between singers.
-4. Offline test material: short recordings of singing in `samples/` (WAV via Git LFS) with expected feature dumps, so DSP can be validated without Unity.
-5. Output layer: an `IHapticSink`-style interface so the mapping layer doesn't know about Bluetooth; later an ESP transport. Keep latency and packet rate in mind (BLE has limited throughput).
+- **Never run in Unity.** The scripts were written without an editor and may not compile. The DSP is only verified on synthetic signals.
+- Spectral descriptors follow the MathWorks definitions used by the RASTA toolbox (AAU). Its public code (razvysme/Unity3D_Spectral_Analysis) was reviewed and not adopted: no license, static single-instance state, blocks the main thread, unwindowed FFT.
+- `ChoirAnalyzer` computes **roughness** (Plomp-Levelt/Sethares), which is not harmonic tension. Its `Scale` constant is calibrated on synthetic voices only.
+- **Harmonic tension** (chords in a key context) is the intended next feature. Needs key estimation plus a model such as key-relative chord distance (Lerdahl) or the spiral array (Chew/Herremans). Design not chosen yet.
+- `AudioSourceInput` only sees one AudioSource's channels (Unity may down-mix), so true 4-mic input needs another adapter, e.g. keijiro/Lasp (Unlicense, desktop, per-device/channel input; multi-stream behaviour unverified).
+- YIN cost on the audio thread (4 voices x ~86 frames/s) is unmeasured.
 
 ## Rules for agents
 
-- Keep DSP code in `unity/Assets/Scripts/Dsp/` free of Unity types, compatible with **C# 9 / netstandard2.1** (Unity's limit), and allocation-free in the hot path.
-- Every DSP change gets a unit test in `dsp/Haptics.Dsp.Tests`. Run: `cd dsp && dotnet test Haptics.Dsp.Tests` (only .NET 10 runtime may be installed; the test project uses `RollForward=Major`).
-- Do not hand-write Unity `.meta` files, scenes or prefabs; Unity generates them. Never commit `Library/`, `Temp/`, `Logs/`, `UserSettings/`.
-- Large audio goes through Git LFS (see `.gitattributes`).
-- Two machines are used: one runs Unity, one runs Claude/other agents. Agents here cannot run Unity, so state clearly what was verified (unit tests) versus what needs checking in the Unity editor.
-- Commit on a branch and push; don't force-push or rewrite history on `main`.
+- Keep `Dsp/` free of `UnityEngine`, C# 9 / netstandard2.1, allocation-free in the hot path.
+- Every DSP change gets a test in `dsp/Haptics.Dsp.Tests`. Run `cd dsp && dotnet test Haptics.Dsp.Tests` (the test project uses `RollForward=Major` because only .NET 10 may be installed).
+- Don't hand-write Unity `.meta`, scenes or prefabs. Never commit `Library/`, `Temp/`, `Logs/`, `UserSettings/`. Large audio goes through Git LFS.
+- Agents here can't run Unity: say what was verified by unit tests and what needs checking in the editor.
+- Work on a branch; no force-push or history rewrite on `main`.
