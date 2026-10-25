@@ -1,6 +1,6 @@
 # haptics-project-dtu
 
-Real-time musical feature extraction for a Unity haptics project.
+Real-time musical feature extraction for a Unity haptics project. Primary use case: a 4-singer choir, one microphone each (VB-Cable for now, direct mics later), with a future Bluetooth/ESP haptic bracelet. Agents and contributors: see [CLAUDE.md](CLAUDE.md) for context and rules.
 
 ## Layout
 
