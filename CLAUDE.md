@@ -6,7 +6,7 @@ Real-time musical feature extraction in Unity, for a haptics project (DTU). Read
 
 Analyse live singing and turn it into features that will eventually drive haptic actuators.
 
-**Concept:** a music-enhancement idea. The singers do **not** wear anything. Selected **audience members** wear haptic bracelets and feel the music (e.g. each voice's rhythm/intensity/pitch movement) as vibration, adding a tactile layer to the live performance. Consequently the mapping layer must decide which singer/feature goes to which wearer, and a performance may have many bracelets (number unknown) fed by only 4 analysed voices.
+**Concept:** a music-enhancement idea. The singers do **not** wear anything. Selected **audience members** wear haptic bracelets and feel the music (e.g. each voice's rhythm/intensity/pitch movement) as vibration, adding a tactile layer to the live performance. **Very likely every wearer receives the same signal** (one broadcast haptic stream derived from the 4 voices, not per-wearer routing). So design the mapping layer as a single output stream (4 voices -> one haptic signal), and design the transport as one-to-many broadcast (e.g. BLE advertising/broadcast, or ESP-NOW style) rather than N individual connections. The number of bracelets is unknown and may be large; per-wearer assignment is not needed unless the user says otherwise.
 
 - **Primary use case:** a 4-person women's choir (soprano/alto-style voices), **one microphone per singer**, so 4 independent mono channels analysed in parallel. Optimise for this first.
 - **Versatility matters:** the DSP and input layers must not hard-code "4 singers" or a specific audio device. Channel count, sample rate and source are configuration.
@@ -20,7 +20,7 @@ Analyse live singing and turn it into features that will eventually drive haptic
 | Audio input planned | Several physical microphones plugged directly into the computer (likely via an audio interface). Expect either multiple devices or one multi-channel device; not decided. |
 | Output (planned, **not started**) | An **ESP** (ESP32-class) controlled over **Bluetooth** driving haptic actuators on a **bracelet worn by audience members** (not by the singers). Do not build this yet; just keep the architecture ready for it (see below). |
 
-Open questions (ask the user, don't assume): exact mic/interface model, target latency budget, how many audience members/bracelets and how many actuators per bracelet, BLE vs Bluetooth Classic, one ESP per bracelet vs one ESP broadcasting to several, how voices are assigned to wearers (e.g. each wearer follows one singer, or a mix), and the acceptable end-to-end latency (mic to vibration).
+Open questions (ask the user, don't assume): exact mic/interface model, target latency budget, how many audience members/bracelets and how many actuators per bracelet, BLE vs Bluetooth Classic, how a single haptic stream is broadcast to many bracelets (BLE advertising vs per-device connections vs another radio), how the 4 voices are combined into that one stream (e.g. mix, strongest voice, or voices mapped to different actuators/frequency bands), and the acceptable end-to-end latency (mic to vibration).
 
 ## Architecture
 
