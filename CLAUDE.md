@@ -6,6 +6,8 @@ Real-time musical feature extraction in Unity, for a haptics project (DTU). Read
 
 Analyse live singing and turn it into features that will eventually drive haptic actuators.
 
+**Concept:** a music-enhancement idea. The singers do **not** wear anything. Selected **audience members** wear haptic bracelets and feel the music (e.g. each voice's rhythm/intensity/pitch movement) as vibration, adding a tactile layer to the live performance. Consequently the mapping layer must decide which singer/feature goes to which wearer, and a performance may have many bracelets (number unknown) fed by only 4 analysed voices.
+
 - **Primary use case:** a 4-person women's choir (soprano/alto-style voices), **one microphone per singer**, so 4 independent mono channels analysed in parallel. Optimise for this first.
 - **Versatility matters:** the DSP and input layers must not hard-code "4 singers" or a specific audio device. Channel count, sample rate and source are configuration.
 - **Real-time is the constraint:** analysis runs on the audio thread in Unity. No allocations, no locks, no logging, no Unity API calls in the audio callback.
@@ -16,9 +18,9 @@ Analyse live singing and turn it into features that will eventually drive haptic
 |-------|--------|
 | Audio input today | **VB-Audio Virtual Cable** (virtual device) feeding Unity. Used for development with recorded/played-back or routed audio. |
 | Audio input planned | Several physical microphones plugged directly into the computer (likely via an audio interface). Expect either multiple devices or one multi-channel device; not decided. |
-| Output (planned, **not started**) | An **ESP** (ESP32-class) controlled over **Bluetooth** driving haptic actuators on a **bracelet**. Do not build this yet; just keep the architecture ready for it (see below). |
+| Output (planned, **not started**) | An **ESP** (ESP32-class) controlled over **Bluetooth** driving haptic actuators on a **bracelet worn by audience members** (not by the singers). Do not build this yet; just keep the architecture ready for it (see below). |
 
-Open questions (ask the user, don't assume): exact mic/interface model, target latency budget, how many actuators per bracelet, BLE vs Bluetooth Classic, whether each singer wears a bracelet.
+Open questions (ask the user, don't assume): exact mic/interface model, target latency budget, how many audience members/bracelets and how many actuators per bracelet, BLE vs Bluetooth Classic, one ESP per bracelet vs one ESP broadcasting to several, how voices are assigned to wearers (e.g. each wearer follows one singer, or a mix), and the acceptable end-to-end latency (mic to vibration).
 
 ## Architecture
 
