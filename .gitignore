@@ -1,0 +1,48 @@
+# Unity
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Bb]uild/
+unity/[Bb]uilds/
+unity/[Ll]ogs/
+unity/[Uu]ser[Ss]ettings/
+unity/[Mm]emory[Cc]aptures/
+unity/[Rr]ecordings/
+unity/.vs/
+unity/.vscode/
+unity/.idea/
+unity/*.csproj
+unity/*.sln
+unity/*.suo
+unity/*.user
+unity/*.pidb
+unity/*.unityproj
+unity/*.pdb
+unity/*.mdb
+unity/*.apk
+unity/*.aab
+unity/*.unitypackage
+unity/crashlytics-build.properties
+unity/sysinfo.txt
+
+# .NET
+bin/
+obj/
+TestResults/
+*.dll
+*.nupkg
+
+# Python tooling
+__pycache__/
+*.pyc
+.venv/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+
+# Local-only
+*.local
+out/

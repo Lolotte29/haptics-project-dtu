@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Builds the Unity-side DSP sources as a plain library so they can be tested without Unity.
+       Single source of truth: unity/Assets/Scripts/Dsp -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace>Haptics.Dsp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\unity\Assets\Scripts\Dsp\**\*.cs" LinkBase="Dsp" />
+  </ItemGroup>
+
+</Project>
