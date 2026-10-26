@@ -1,8 +1,8 @@
 # Unity setup
 
-`unity/` has the scripts but no Unity project files yet. Do this once on the Unity machine.
+`unity/` is a complete Unity project (Unity 6000.6, URP): settings, packages, scene and `.meta` files are all committed. Nothing to generate.
 
-## 1. Clone
+## 1. Clone and open
 
 ```bash
 git lfs install
@@ -10,26 +10,19 @@ git clone https://github.com/Lolotte29/haptics-project-dtu
 cd haptics-project-dtu
 ```
 
-## 2. Create the project files
+Unity Hub > **Add > Add project from disk**, pick the `unity/` folder, open it with the version in `unity/ProjectSettings/ProjectVersion.txt` (Hub offers to install it). The first import takes a few minutes.
 
-Unity Hub won't create a project in a non-empty folder, so generate one elsewhere and copy its settings in:
+Then set **Edit > Project Settings > Audio > DSP Buffer Size = Best latency** (check whether it is already committed).
 
-1. Unity Hub > **New project**: Unity 6 LTS or 2022.3 LTS, any 3D template, named `HapticsTmp`, saved outside the repo. Close the editor.
-2. Copy `HapticsTmp/ProjectSettings/` and `HapticsTmp/Packages/` into the repo's `unity/` folder. Don't touch `unity/Assets/`.
-3. Delete `HapticsTmp`. In Hub: **Add > Add project from disk**, pick `unity/`, open it.
+## 2. Scene
 
-Then set **Edit > Project Settings > Audio > DSP Buffer Size = Best latency**. (Check that Editor settings have *Visible Meta Files* and *Force Text*; they usually do.)
-
-## 3. Scene
-
-1. Empty GameObject `Choir` + component **ChoirHost** (Voice Count 4).
-2. Empty GameObject `Input` + **AudioSource** + **AudioSourceInput**. Drag `Choir` into *Host*.
+Open `Assets/main.unity`. It already has `Choir` (**ChoirHost**, Voice Count 4) and `Input` (**AudioSource** + **AudioSourceInput**, Host assigned, *Use Microphone* ticked). Nothing to wire.
 
 Fix any compile errors in the Console first (the scripts have never been compiled).
 
 ## 4. Try it
 
-**Without hardware:** assign a singing clip to the AudioSource (Loop + Play On Awake) and press Play. The top-left display shows each voice's pitch, note and level, and how many voices are detected.
+**Without hardware:** untick *Use Microphone*, assign a singing clip to the AudioSource (Loop + Play On Awake) and press Play. The top-left display shows each voice's pitch, note and level, and how many voices are detected.
 
 **With VB-Cable:** on `AudioSourceInput` tick *Use Microphone*. Device names are printed to the Console at start; paste the VB-Cable one (typically `CABLE Output (VB-Audio Virtual Cable)`) into *Microphone Device*. To avoid hearing it twice, create an Audio Mixer, set its group to -80 dB, and use that as the AudioSource output (verify that the analysis still receives audio). A stereo cable gives voices 1 and 2 only; the others show `--`.
 
@@ -40,4 +33,4 @@ Fix any compile errors in the Console first (the scripts have never been compile
 - Do the voice rows update smoothly, with `--` for channels that carry no signal?
 - Audio-thread CPU in the Profiler (Window > Analysis > Profiler).
 
-Commit the generated `ProjectSettings/`, `Packages/manifest.json`, `packages-lock.json`, scenes and all `.meta` files. `Library/`, `Temp/`, `Logs/`, `UserSettings/` are git-ignored.
+When you add scripts or scenes in Unity, commit them together with their `.meta` files. `Library/`, `Temp/`, `Logs/`, `UserSettings/` are git-ignored.
