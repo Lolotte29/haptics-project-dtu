@@ -1,18 +1,28 @@
 namespace Haptics.Dsp
 {
     /// <summary>
-    /// The analysis pipeline for N singers: one <see cref="VoiceProcessor"/> per voice, then <see cref="ChoirAnalyzer"/>.
+    /// The analysis pipeline for N singers: one <see cref="VoiceProcessor"/> per voice.
     /// Input-agnostic: feed it interleaved samples from any source (voice i reads channel i).
+    /// This is where ensemble-level stages (chord, key, harmonic tension) will plug in, see docs/roadmap.md.
     /// Not thread-safe: call <see cref="Process"/> from a single thread.
     /// </summary>
     public sealed class Choir
     {
         private readonly VoiceProcessor[] _processors;
-        private bool _onsetSinceLastFrame;
 
         public VoiceFrame[] Voices { get; }
-        public ChoirFrame Frame { get; private set; }
         public int VoiceCount => _processors.Length;
+
+        /// <summary>Number of voices with a detected pitch in their latest frame.</summary>
+        public int VoicedCount
+        {
+            get
+            {
+                int n = 0;
+                for (int i = 0; i < Voices.Length; i++) if (Voices[i].Voiced) n++;
+                return n;
+            }
+        }
 
         public Choir(int sampleRate, int voiceCount, int hopSize = 512)
         {
@@ -23,7 +33,7 @@ namespace Haptics.Dsp
 
         /// <summary>
         /// Feeds <paramref name="frames"/> sample-frames of interleaved audio. Voices without a matching channel get silence.
-        /// Returns true if <see cref="Frame"/> was refreshed.
+        /// Returns true if any <see cref="Voices"/> entry was refreshed.
         /// </summary>
         public bool Process(float[] interleaved, int frames, int channels)
         {
@@ -36,16 +46,9 @@ namespace Haptics.Dsp
                     if (_processors[v].Process(s))
                     {
                         Voices[v] = _processors[v].Latest;
-                        if (Voices[v].Onset) _onsetSinceLastFrame = true;
                         updated = true;
                     }
                 }
-            }
-
-            if (updated)
-            {
-                Frame = ChoirAnalyzer.Analyze(Voices, _onsetSinceLastFrame);
-                _onsetSinceLastFrame = false;
             }
             return updated;
         }

@@ -1,25 +1,29 @@
-# What to implement, in order
+# What to implement, piece by piece
 
-Each step is small and leaves the project working. Don't start a step before the previous one is verified.
+Do one step at a time. Each step is one small script plus a test in `dsp/Haptics.Dsp.Tests`, and leaves the project working. Script names are in [scripts.md](scripts.md).
 
-## 1. Verify what exists (blocking everything else)
+## 0. Done
+- [x] Spectral features (RMS, centroid, spread, skewness, entropy, ZCR, flux, onset), YIN pitch, per-voice and choir wiring.
+
+## 1. Verify what exists (do first)
 - [ ] Open `unity/` in Unity, fix compile errors ([unity-setup.md](unity-setup.md)).
-- [ ] Run the HUD with a clip, then VB-Cable. Check pitch/roughness look sane.
+- [ ] Sing into it (clip, then VB-Cable): are pitch and note names stable and right?
 - [ ] Measure YIN + FFT cost for 4 voices on the audio thread.
 
-## 2. Haptic output path (so something can be felt)
-- [ ] `HapticMapperTests`: silence -> 0, loud -> high, onset -> pulse, attack/release smoothing.
-- [ ] A `LogHapticSink` (or on-screen) to prove `ChoirHost.Sink` works.
-- [ ] Decide with the user: latency budget, BLE vs Classic, bracelets and actuators, how one stream is broadcast to many.
-- [ ] `EspBluetoothSink : IHapticSink` once those are answered.
+## 2. Pitch -> notes
+- [ ] `PitchClass`: Hz -> MIDI note, pitch class 0..11, cents off. Pure maths, easy test. Reuse it in `ChoirHost` instead of its private `NoteName`.
 
-## 3. Real multi-mic input
-- [ ] Decide interface: one multichannel device or several devices.
-- [ ] New input adapter (e.g. Lasp) next to `AudioSourceInput`; `AudioSourceInput` may down-mix channels.
+## 3. Chord recognition
+- [ ] `ChordRecognizer`: from the voiced pitch classes, find root + quality (major, minor, dim, aug, sus, 7th). Start with template matching. Decide: what to output with 2 voices or noisy pitches.
 
-## 4. Better features
-- [ ] Calibrate `ChoirAnalyzer.Scale` and `HapticMapper` weights on real singing.
-- [ ] Harmonic tension: key estimation + key-relative chord distance (Lerdahl) or spiral array (Chew). Design not chosen.
+## 4. Key estimation
+- [ ] `KeyEstimator`: accumulate pitch classes over a few seconds (decaying histogram), correlate with Krumhansl-Schmuckler major/minor profiles -> tonic + mode + confidence.
 
-## 5. Later
-- [ ] Per-wearer routing, only if "everyone gets the same signal" stops being true.
+## 5. Harmonic tension
+- [ ] `HarmonicTension`: chord in key -> 0..1. Pick a model first (Lerdahl key-relative chord distance or spiral array, Chew/Herremans), note the choice in CLAUDE.md. Then add `ChoirFrame` and expose it on `Choir`.
+- [ ] Show chord, key and tension in the `ChoirHost` display.
+
+## 6. Later, after tension works
+- [ ] Haptic mapping (tension + loudness -> intensity + onset pulse), smoothing.
+- [ ] Real multi-mic input (one multichannel device or several; e.g. Lasp), since `AudioSourceInput` may down-mix.
+- [ ] Bluetooth/ESP sink. Open questions: latency budget, BLE vs Classic, bracelets/actuators, one stream to many wearers.

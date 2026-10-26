@@ -29,7 +29,7 @@ Fix any compile errors in the Console first (the scripts have never been compile
 
 ## 4. Try it
 
-**Without hardware:** assign a singing clip to the AudioSource (Loop + Play On Awake) and press Play. The top-left display shows each voice's pitch, note and level, plus roughness and haptic intensity.
+**Without hardware:** assign a singing clip to the AudioSource (Loop + Play On Awake) and press Play. The top-left display shows each voice's pitch, note and level, and how many voices are detected.
 
 **With VB-Cable:** on `AudioSourceInput` tick *Use Microphone*. Device names are printed to the Console at start; paste the VB-Cable one (typically `CABLE Output (VB-Audio Virtual Cable)`) into *Microphone Device*. To avoid hearing it twice, create an Audio Mixer, set its group to -80 dB, and use that as the AudioSource output (verify that the analysis still receives audio). A stereo cable gives voices 1 and 2 only; the others show `--`.
 
@@ -37,7 +37,7 @@ Fix any compile errors in the Console first (the scripts have never been compile
 
 - Console errors or compile errors.
 - Does a sung note show a stable, correct pitch and note name?
-- Do two notes a semitone apart show much higher roughness than a fifth? (`ChoirAnalyzer.Scale` can be tuned.)
+- Do the voice rows update smoothly, with `--` for channels that carry no signal?
 - Audio-thread CPU in the Profiler (Window > Analysis > Profiler).
 
 Commit the generated `ProjectSettings/`, `Packages/manifest.json`, `packages-lock.json`, scenes and all `.meta` files. `Library/`, `Temp/`, `Logs/`, `UserSettings/` are git-ignored.
