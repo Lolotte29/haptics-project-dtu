@@ -22,7 +22,16 @@ public class ChoirHost : MonoBehaviour
         _choir = new Choir(AudioSettings.outputSampleRate, voiceCount);
     }
 
-    /// <summary>Called from the audio thread by an input component.</summary>
+    /// <summary>
+    /// Rebuilds the pipeline for a different sample rate (e.g. a capture device that ignored the requested rate).
+    /// Call before the first <see cref="Push"/> of that input, from the thread that will push.
+    /// </summary>
+    public void Configure(int sampleRate)
+    {
+        _choir = new Choir(sampleRate, voiceCount);
+    }
+
+    /// <summary>Called by an input component: from the audio thread (clip playback) or the main thread (microphone).</summary>
     public void Push(float[] interleaved, int frames, int channels)
     {
         if (_choir == null) return;
