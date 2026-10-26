@@ -31,16 +31,23 @@ public class AudioSourceInput : MonoBehaviour
         foreach (var d in Microphone.devices) Debug.Log("Microphone device: " + d);
 
         _device = string.IsNullOrEmpty(microphoneDevice) ? null : microphoneDevice;
-        _clip = Microphone.Start(_device, true, 1, AudioSettings.outputSampleRate);
+        var clip = Microphone.Start(_device, true, 1, AudioSettings.outputSampleRate);
+        if (clip == null)
+        {
+            Debug.LogError("Microphone.Start failed for device: " + (_device ?? "(default)"));
+            yield break;
+        }
         while (Microphone.GetPosition(_device) <= 0) yield return null; // wait for capture to start
 
         // The device may not honour the requested rate or channel count: analyse what we actually get.
-        _chunkFrames = _clip.frequency / ChunksPerSecond;
-        _chunk = new float[_chunkFrames * _clip.channels];
+        _chunkFrames = Mathf.Max(1, clip.frequency / ChunksPerSecond);
+        _chunk = new float[_chunkFrames * clip.channels];
         _readPos = Microphone.GetPosition(_device);
-        if (host != null) host.Configure(_clip.frequency);
-        Debug.Log($"Microphone capture: {_clip.frequency} Hz, {_clip.channels} channel(s), " +
-                  $"{_clip.samples} frames. Voices beyond channel {_clip.channels} receive silence.");
+        if (host != null) host.Configure(clip.frequency);
+        Debug.Log($"Microphone capture: {clip.frequency} Hz, {clip.channels} channel(s), " +
+                  $"{clip.samples} frames. Voices beyond channel {clip.channels} receive silence.");
+
+        _clip = clip; // publish last: Update must not run before the fields above are set
     }
 
     private void Update()
