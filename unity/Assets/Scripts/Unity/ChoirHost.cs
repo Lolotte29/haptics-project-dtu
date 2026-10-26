@@ -10,6 +10,8 @@ public class ChoirHost : MonoBehaviour
 {
     [SerializeField] private int voiceCount = 4;
     [SerializeField] private bool showHud = true;
+    [Tooltip("HUD size multiplier. 0 = automatic from screen height; try 2-3 if the text is still small.")]
+    [SerializeField] private float hudScale = 0f;
 
     private Choir _choir;
     private readonly HapticMapper _mapper = new HapticMapper();
@@ -51,6 +53,10 @@ public class ChoirHost : MonoBehaviour
     private void OnGUI()
     {
         if (!showHud || _choir == null) return;
+        // IMGUI is sized in pixels, so scale it up on high-resolution screens.
+        float scale = hudScale > 0f ? hudScale : Mathf.Max(1f, Screen.height / 540f);
+        GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+
         var voices = _choir.Voices;
         GUILayout.BeginArea(new Rect(10, 10, 360, 260), GUI.skin.box);
         for (int i = 0; i < voices.Length; i++)
