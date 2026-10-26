@@ -29,7 +29,7 @@ audio in (channel i = singer i)
 
 `Choir` wires the first two stages: `Choir.Process(interleavedSamples, frames, channels)`.
 
-- `unity/Assets/Scripts/Dsp/`: Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
+- `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir/Haptic, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
 - `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline and mapper, HUD, optional sink) and `AudioSourceInput` (feeds an AudioSource, or a mic/VB-Cable device looped through it).
 - `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (20 tests).
 

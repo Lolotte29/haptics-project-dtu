@@ -6,10 +6,12 @@ Real-time musical feature extraction in Unity for a haptics project. Target setu
 
 | Path | Purpose |
 |------|---------|
-| `unity/Assets/Scripts/Dsp/` | Unity-free C# analysis code (the part to test and extend). |
+| `unity/Assets/Scripts/Dsp/` | Unity-free C# analysis code, in `Core/`, `Voice/`, `Choir/`, `Haptic/` (the part to test and extend). |
 | `unity/Assets/Scripts/Unity/` | Two small MonoBehaviours: `ChoirHost` (pipeline + on-screen display) and `AudioSourceInput`. |
 | `dsp/` | Plain .NET project + xUnit tests that compile the DSP files without Unity: `cd dsp && dotnet test Haptics.Dsp.Tests`. |
 | `docs/unity-setup.md` | How to open the project in Unity and try it. |
+| `docs/scripts.md` | Map of every script, grouped by pipeline stage, with status. |
+| `docs/roadmap.md` | What to implement next, in order. |
 
 ## What it computes
 

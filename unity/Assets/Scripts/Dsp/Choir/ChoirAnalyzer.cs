@@ -2,18 +2,6 @@ using System;
 
 namespace Haptics.Dsp
 {
-    /// <summary>Features of the whole ensemble.</summary>
-    public struct ChoirFrame
-    {
-        /// <summary>Sensory dissonance between voices, 0 (consonant/none) .. 1 (very rough).</summary>
-        public float Roughness;
-        /// <summary>Loudest voice RMS.</summary>
-        public float Loudness;
-        /// <summary>True if any voice had an onset since the previous frame.</summary>
-        public bool Onset;
-        public int VoicedCount;
-    }
-
     /// <summary>
     /// Combines per-singer pitches into a roughness value (Plomp-Levelt, Sethares parametrisation)
     /// over the harmonic partials of every pair of voiced singers.
