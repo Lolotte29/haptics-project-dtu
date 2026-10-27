@@ -149,7 +149,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20146219858c8df4ba3f0156b4a8faba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChoirHost
-  voiceCount: 2
+  voiceCount: 1
   showHud: 1
   hudScale: 0
 --- !u!4 &476623316
@@ -216,7 +216,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AudioSourceInput
   host: {fileID: 476623315}
   useMicrophone: 1
-  microphoneDevice: CABLE Output (VB-Audio Virtual Cable)
+  microphoneDevice: Microphone Array (AMD Audio Device)
 --- !u!82 &1040955605
 AudioSource:
   m_ObjectHideFlags: 0
