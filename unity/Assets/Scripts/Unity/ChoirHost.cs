@@ -17,6 +17,9 @@ public class ChoirHost : MonoBehaviour
 
     public VoiceFrame[] Voices => _choir?.Voices;
 
+    /// <summary>Spectral features of the summed signal (or of the single source). Default frame before Awake.</summary>
+    public FeatureFrame Mix => _choir != null ? _choir.Mix : default;
+
     /// <summary>Plug in chord recognition before Awake finishes or any time later; used in multi-source mode only.</summary>
     public IHarmonyAnalyzer HarmonyAnalyzer
     {
@@ -58,10 +61,10 @@ public class ChoirHost : MonoBehaviour
         {
             var v = voices[i];
             string note = v.Voiced ? NoteName(v.PitchHz) : "--";
-            GUILayout.Label($"Voice {i + 1}: {note,-5} {v.PitchHz,6:0.0} Hz  level {v.Rms:0.000}");
+            GUILayout.Label($"Voice {i + 1}: {note,-5} {v.PitchHz,6:0.0} Hz");
         }
         GUILayout.Label($"Voiced {_choir.VoicedCount}/{voices.Length}   Mode {_choir.Mode}");
-        GUILayout.Label($"Mix centroid {_choir.Mix.SpectralCentroid:0} Hz   level {_choir.Mix.Rms:0.000}");
+        GUILayout.Label($"{(_choir.Mode == ChoirMode.SingleSource ? "Source" : "Mix")}: centroid {_choir.Mix.SpectralCentroid:0} Hz   level {_choir.Mix.Rms:0.000}");
         var h = _choir.Harmony;
         if (h.RootPitchClass >= 0)
             GUILayout.Label($"Chord root {Names[h.RootPitchClass]} ({h.Confidence:0.00})");

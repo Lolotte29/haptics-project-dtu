@@ -70,22 +70,33 @@ public class ChoirTests
     }
 
     [Fact]
-    public void MultiSourceMixHasSpectralFeaturesButNoPitch()
+    public void MultiSourceExtractsSpectralFeaturesOnTheMixOnly()
     {
         var choir = RunChoir(new[] { 261.6, 329.6, 392.0, 523.3 });
         Assert.Equal(ChoirMode.MultiSource, choir.Mode);
         Assert.True(choir.Mix.Rms > 0.01f);
         Assert.True(choir.Mix.SpectralCentroid > 100f);
-        Assert.Equal(0f, choir.Mix.PitchHz);
+        Assert.Equal(4, choir.VoicedCount); // pitch is still tracked per voice
+    }
+
+    [Fact]
+    public void MixCentroidLiesBetweenTheSingleVoiceCentroids()
+    {
+        // Spectral features describe the sum, not the individual voices.
+        float low = RunChoir(new[] { 220.0 }).Mix.SpectralCentroid;
+        float high = RunChoir(new[] { 880.0 }).Mix.SpectralCentroid;
+        float mix = RunChoir(new[] { 220.0, 880.0 }).Mix.SpectralCentroid;
+        Assert.True(high > low * 1.5f, $"centroids {low} / {high}");
+        Assert.InRange(mix, low, high);
     }
 
     [Fact]
     public void MixMatchesSumOfVoices()
     {
         // Two identical in-phase voices: the mix at gain 1/sqrt(2) is sqrt(2) times one voice.
-        var choir = RunChoir(new[] { 261.6, 261.6 });
-        float expected = choir.Voices[0].Rms * (float)Math.Sqrt(2);
-        Assert.InRange(choir.Mix.Rms, expected * 0.9f, expected * 1.1f);
+        float one = RunChoir(new[] { 261.6 }).Mix.Rms;
+        float mix = RunChoir(new[] { 261.6, 261.6 }).Mix.Rms;
+        Assert.InRange(mix, one * (float)Math.Sqrt(2) * 0.9f, one * (float)Math.Sqrt(2) * 1.1f);
     }
 
     private sealed class FakeHarmony : IHarmonyAnalyzer
