@@ -31,8 +31,10 @@ Status: **done** = implemented and unit-tested on synthetic signals; **untested*
 | `Voice/` | `FeatureExtractor.cs` | RMS, centroid, spread, skewness, entropy, ZCR, flux, onset | done |
 | `Voice/` | `VoiceFrame.cs` | Everything known about one singer (data) | done |
 | `Voice/` | `VoiceProcessor.cs` | Per-singer: features + YIN -> `VoiceFrame`. `EnablePitch = false` skips YIN | done |
-| `Choir/` | `Choir.cs` | Runs N `VoiceProcessor`, plus a summed-mix processor when N >= 2. Fills `Voices`, `Mix`, `Harmony`; `Mode` = single/multi source | done |
-| `Choir/` | `Harmony.cs` | `IHarmonyAnalyzer` + `HarmonyFrame` (chord root, confidence): the plug-in point for chord recognition. No implementation yet | interface only |
+| `Choir/` | `Choir.cs` | Runs N `VoiceProcessor`, plus a summed-mix processor when N >= 2. Fills `Voices`, `Mix`, `Harmony` | done |
+| `Choir/` | `ChoirMode.cs` | `SingleSource` (1 voice) or `MultiSource` (2+), chosen from `voiceCount` | done |
+| `Choir/` | `HarmonyFrame.cs` | Chord result (root pitch class, confidence); later key and tension | done (data) |
+| `Choir/` | `IHarmonyAnalyzer.cs` | Plug-in point for chord recognition; set as `Choir.HarmonyAnalyzer`. No implementation yet | interface only |
 
 ## Exists: `unity/Assets/Scripts/Unity/`
 
@@ -41,7 +43,7 @@ Status: **done** = implemented and unit-tested on synthetic signals; **untested*
 | `ChoirHost.cs` | Owns `Choir` (`voiceCount` field sets the mode), exposes `HarmonyAnalyzer`, debug display of pitch/note/level per voice, mode, mix centroid/level, chord root | untested in Unity |
 | `AudioSourceInput.cs` | Feeds a clip (audio thread) or a capture device read directly from the mic buffer (main thread, VB-Cable) into `ChoirHost` | untested; reads one device's channels only |
 
-Tests: `dsp/Haptics.Dsp.Tests/` (`cd dsp && dotnet test Haptics.Dsp.Tests`).
+Tests: `dsp/Haptics.Dsp.Tests/` (`cd dsp && dotnet test Haptics.Dsp.Tests`), one file per tested area: `YinTests`, `FeatureExtractorTests`, `PitchRobustnessTests`, `ChoirTests` (modes, mix, harmony hook), with shared synthetic signals in `TestSignals`.
 
 ## Planned (not created): add one at a time, see [roadmap.md](roadmap.md)
 

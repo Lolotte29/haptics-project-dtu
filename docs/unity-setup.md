@@ -16,21 +16,22 @@ Then set **Edit > Project Settings > Audio > DSP Buffer Size = Best latency** (c
 
 ## 2. Scene
 
-Open `Assets/main.unity`. It already has `Choir` (**ChoirHost**, Voice Count 4) and `Input` (**AudioSource** + **AudioSourceInput**, Host assigned, *Use Microphone* ticked). Nothing to wire.
+Open `Assets/main.unity`. It already has `Choir` (**ChoirHost**, Voice Count 4; set it to 1 for single-source mode, which skips pitch tracking) and `Input` (**AudioSource** + **AudioSourceInput**, Host assigned, *Use Microphone* ticked). Nothing to wire.
 
 Fix any compile errors in the Console first (the scripts have never been compiled).
 
-## 4. Try it
+## 3. Try it
 
 **Without hardware:** untick *Use Microphone*, assign a singing clip to the AudioSource (Loop + Play On Awake) and press Play. The top-left display shows each voice's pitch, note and level, and how many voices are detected.
 
 **With VB-Cable:** on `AudioSourceInput` tick *Use Microphone*. Device names are printed to the Console at start; paste the VB-Cable one (typically `CABLE Output (VB-Audio Virtual Cable)`) into *Microphone Device*. To avoid hearing it twice, create an Audio Mixer, set its group to -80 dB, and use that as the AudioSource output (verify that the analysis still receives audio). A stereo cable gives voices 1 and 2 only; the others show `--`.
 
-## 5. What to check and report back
+## 4. What to check and report back
 
 - Console errors or compile errors.
 - Does a sung note show a stable, correct pitch and note name?
 - Do the voice rows update smoothly, with `--` for channels that carry no signal?
+- Does the display show the right mode and a sensible mix level/centroid (Voice Count 1 vs 4)?
 - Audio-thread CPU in the Profiler (Window > Analysis > Profiler).
 
 When you add scripts or scenes in Unity, commit them together with their `.meta` files. `Library/`, `Temp/`, `Logs/`, `UserSettings/` are git-ignored.

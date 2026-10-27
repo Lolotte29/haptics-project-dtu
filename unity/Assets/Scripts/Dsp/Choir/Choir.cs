@@ -2,14 +2,6 @@ using System;
 
 namespace Haptics.Dsp
 {
-    public enum ChoirMode
-    {
-        /// <summary>One source: spectral features only, no pitch tracking, no harmony.</summary>
-        SingleSource,
-        /// <summary>Several sources: per-voice YIN, optional chord analysis, plus spectral features of the summed signal.</summary>
-        MultiSource,
-    }
-
     /// <summary>
     /// The analysis pipeline. The mode follows <c>voiceCount</c>:
     /// 1 = <see cref="ChoirMode.SingleSource"/>, 2+ = <see cref="ChoirMode.MultiSource"/>.

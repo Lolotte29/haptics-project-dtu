@@ -22,7 +22,8 @@ Open questions (ask the user, don't assume): mic/interface model, latency budget
 ```
 audio in (channel i = singer i)
   -> VoiceProcessor x N : level, spectral shape (FeatureExtractor), YIN pitch   -> VoiceFrame
-        (exists up to here)
+  -> sum of channels    : same features on the mix, no pitch (N >= 2)           -> Choir.Mix
+        (exists up to here; with one source only the features run, no YIN)
   -> chord recognition  : pitch classes of all voices -> chord                   (planned)
   -> key estimation     : running key from chord/pitch history                    (planned)
   -> harmonic tension   : chord in key context -> tension 0..1                    (planned)
