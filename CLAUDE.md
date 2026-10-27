@@ -27,11 +27,11 @@ audio in (channel i = singer i)
   -> IHapticSink        : (future) Bluetooth to ESP
 ```
 
-`Choir` wires the first two stages: `Choir.Process(interleavedSamples, frames, channels)`.
+`Choir` wires the first two stages: `Choir.Process(interleavedSamples, frames, channels)`. Mode follows `voiceCount`: **1 source** = spectral features only (no YIN, no harmony); **2+ sources** = per-voice YIN + roughness + optional `IHarmonyAnalyzer` (chord recognition, not implemented yet), plus spectral features of the summed signal (`ChoirFrame.Mix`, gain 1/sqrt(N)).
 
 - `unity/Assets/Scripts/Dsp/`: Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
 - `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline and mapper, HUD, optional sink) and `AudioSourceInput` (feeds an AudioSource, or a mic/VB-Cable device looped through it).
-- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (20 tests).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (23 tests).
 
 ## Honest state
 

@@ -83,11 +83,61 @@ public class ChoirTests
     }
 
     [Fact]
-    public void SingleVoiceHasNoRoughness()
+    public void SingleSourceSkipsPitchButKeepsSpectralFeatures()
     {
-        var f = RunChoir(new[] { 261.6 }).Frame;
+        var choir = RunChoir(new[] { 261.6 });
+        var f = choir.Frame;
+        Assert.Equal(ChoirMode.SingleSource, choir.Mode);
         Assert.Equal(0f, f.Roughness);
-        Assert.Equal(1, f.VoicedCount);
+        Assert.Equal(0, f.VoicedCount);
+        Assert.Equal(0f, choir.Voices[0].PitchHz);
+        Assert.True(f.Mix.Rms > 0.01f);
+        Assert.True(f.Mix.SpectralCentroid > 100f);
+        Assert.Equal(-1, f.Harmony.RootPitchClass);
+    }
+
+    [Fact]
+    public void MultiSourceMixHasSpectralFeaturesButNoPitch()
+    {
+        var choir = RunChoir(new[] { 261.6, 329.6, 392.0, 523.3 });
+        var f = choir.Frame;
+        Assert.Equal(ChoirMode.MultiSource, choir.Mode);
+        Assert.True(f.Mix.Rms > 0.01f);
+        Assert.True(f.Mix.SpectralCentroid > 100f);
+        Assert.Equal(0f, f.Mix.PitchHz);
+    }
+
+    [Fact]
+    public void MixMatchesSumOfVoices()
+    {
+        // Two identical in-phase voices: the mix at gain 1/sqrt(2) is sqrt(2) times one voice.
+        var choir = RunChoir(new[] { 261.6, 261.6 });
+        float expected = choir.Voices[0].Rms * (float)Math.Sqrt(2);
+        Assert.InRange(choir.Frame.Mix.Rms, expected * 0.9f, expected * 1.1f);
+    }
+
+    private sealed class FakeHarmony : IHarmonyAnalyzer
+    {
+        public int Calls;
+        public HarmonyFrame Analyze(VoiceFrame[] voices)
+        {
+            Calls++;
+            return new HarmonyFrame { RootPitchClass = 0, Confidence = 1f };
+        }
+    }
+
+    [Fact]
+    public void HarmonyRunsOnlyInMultiSourceMode()
+    {
+        var multi = new Choir(Sr, 2) { Harmony = new FakeHarmony() };
+        var single = new Choir(Sr, 1) { Harmony = new FakeHarmony() };
+        var buf2 = new float[441 * 2];
+        var buf1 = new float[441];
+        for (int i = 0; i < 20; i++) { multi.Process(buf2, 441, 2); single.Process(buf1, 441, 1); }
+        Assert.Equal(0, multi.Frame.Harmony.RootPitchClass);
+        Assert.Equal(-1, single.Frame.Harmony.RootPitchClass);
+        Assert.True(((FakeHarmony)multi.Harmony).Calls > 0);
+        Assert.Equal(0, ((FakeHarmony)single.Harmony).Calls);
     }
 
     [Fact]

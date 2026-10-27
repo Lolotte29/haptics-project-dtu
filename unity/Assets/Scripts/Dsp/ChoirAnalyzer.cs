@@ -12,6 +12,10 @@ namespace Haptics.Dsp
         /// <summary>True if any voice had an onset since the previous frame.</summary>
         public bool Onset;
         public int VoicedCount;
+        /// <summary>Spectral features of the summed signal (of the single source when there is only one). Pitch is never set.</summary>
+        public VoiceFrame Mix;
+        /// <summary>Chord analysis; <see cref="HarmonyFrame.RootPitchClass"/> is -1 when no analyzer is plugged in.</summary>
+        public HarmonyFrame Harmony;
     }
 
     /// <summary>

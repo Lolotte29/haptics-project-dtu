@@ -34,6 +34,8 @@ namespace Haptics.Dsp
         /// <summary>RMS below this is treated as silence (no pitch reported).</summary>
         public float SilenceRms = 0.01f;
         public float MinPitchConfidence = 0.7f;
+        /// <summary>When false, YIN is skipped and <see cref="VoiceFrame.PitchHz"/> stays 0 (spectral features only).</summary>
+        public bool EnablePitch = true;
 
         public VoiceFrame Latest { get; private set; }
 
@@ -63,7 +65,7 @@ namespace Haptics.Dsp
         private void OnFeatures(FeatureFrame f)
         {
             float pitch = 0f, conf = 0f;
-            if (f.Rms >= SilenceRms)
+            if (EnablePitch && f.Rms >= SilenceRms)
             {
                 for (int i = 0; i < _ring.Length; i++) _linear[i] = _ring[(_write + i) % _ring.Length];
                 pitch = _yin.Detect(_linear, out conf);

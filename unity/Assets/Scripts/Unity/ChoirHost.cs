@@ -20,6 +20,13 @@ public class ChoirHost : MonoBehaviour
     public HapticFrame Haptic { get; private set; }
     public VoiceFrame[] Voices => _choir?.Voices;
 
+    /// <summary>Plug in chord recognition before Awake finishes or any time later; used in multi-source mode only.</summary>
+    public IHarmonyAnalyzer Harmony
+    {
+        get => _choir?.Harmony;
+        set { if (_choir != null) _choir.Harmony = value; }
+    }
+
     /// <summary>Set to receive one HapticFrame per Unity Update (e.g. the future Bluetooth sender).</summary>
     public IHapticSink Sink { get; set; }
 
@@ -61,6 +68,9 @@ public class ChoirHost : MonoBehaviour
         }
         var f = Frame;
         GUILayout.Label($"Roughness {f.Roughness:0.00}   Loudness {f.Loudness:0.000}   Voiced {f.VoicedCount}");
+        GUILayout.Label($"Mode {_choir.Mode}   Mix centroid {f.Mix.SpectralCentroid:0} Hz   level {f.Mix.Rms:0.000}");
+        if (f.Harmony.RootPitchClass >= 0)
+            GUILayout.Label($"Chord root {Names[f.Harmony.RootPitchClass]} ({f.Harmony.Confidence:0.00})");
         GUILayout.Label($"Haptic intensity {Haptic.Intensity:0.00}");
         GUILayout.HorizontalSlider(Haptic.Intensity, 0f, 1f);
         GUILayout.EndArea();
