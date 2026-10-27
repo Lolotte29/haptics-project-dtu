@@ -32,7 +32,7 @@ audio in (channel i = singer i)
 `Choir` wraps the voice stage: `Choir.Process(interleavedSamples, frames, channels)` fills `Choir.Voices`. Mode follows `voiceCount`: **1 source** = spectral features only (no YIN, no harmony); **2+ sources** = per-voice YIN, optional `IHarmonyAnalyzer` (chord recognition, not implemented yet), plus spectral features of the summed signal (`Choir.Mix`, gain 1/sqrt(N)). Planned stages go in `Dsp/Choir/`. Order and checklist: docs/roadmap.md.
 
 - `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
-- `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD) and `AudioSourceInput` (feeds an AudioSource, or a mic/VB-Cable device looped through it).
+- `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD) and `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly).
 - `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (27 tests).
 
 ## Honest state
