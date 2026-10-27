@@ -41,7 +41,7 @@ public class PitchRobustnessTests
     /// <summary>Fraction of voiced-reported frames that are off by more than a quarter tone, and the unvoiced fraction.</summary>
     private (double wrong, double dropped, int frames) Score(float[] x, double[] f0, int sr)
     {
-        var vp = new VoiceProcessor(sr);
+        var vp = new PitchTracker(sr);
         int wrong = 0, dropped = 0, frames = 0;
         for (int i = 0; i < x.Length; i++)
         {

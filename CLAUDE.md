@@ -21,16 +21,16 @@ Open questions (ask the user, don't assume): mic/interface model, latency budget
 
 ```
 audio in (channel i = singer i)
-  -> VoiceProcessor x N : level, spectral shape (FeatureExtractor), YIN pitch   -> VoiceFrame
-  -> sum of channels    : same features on the mix, no pitch (N >= 2)           -> Choir.Mix
-        (exists up to here; with one source only the features run, no YIN)
+  -> PitchTracker x N   : YIN pitch per singer, nothing else                    -> VoiceFrame (feeds harmony)
+  -> sum of channels    : level + spectral features (FeatureExtractor), once    -> Choir.Mix
+        (exists up to here; with one source: features on that channel, no YIN)
   -> chord recognition  : pitch classes of all voices -> chord                   (planned)
   -> key estimation     : running key from chord/pitch history                    (planned)
   -> harmonic tension   : chord in key context -> tension 0..1                    (planned)
   -> haptic mapping     : tension + loudness -> one intensity + pulse -> Bluetooth (planned, last)
 ```
 
-`Choir` wraps the voice stage: `Choir.Process(interleavedSamples, frames, channels)` fills `Choir.Voices`. Mode follows `voiceCount`: **1 source** = spectral features only (no YIN, no harmony); **2+ sources** = per-voice YIN, optional `IHarmonyAnalyzer` (chord recognition, not implemented yet), plus spectral features of the summed signal (`Choir.Mix`, gain 1/sqrt(N)). Planned stages go in `Dsp/Choir/`. Order and checklist: docs/roadmap.md.
+`Choir` wraps the voice stage: `Choir.Process(interleavedSamples, frames, channels)` fills `Choir.Voices`. Mode follows `voiceCount`: **1 source** = spectral features of that channel only (no YIN, no harmony); **2+ sources** = per-voice YIN only (`Choir.Voices`, pitch is the only per-singer analysis), optional `IHarmonyAnalyzer` (chord recognition, not implemented yet), plus spectral features of the summed signal (`Choir.Mix`, gain 1/sqrt(N)). Spectral features are deliberately never computed per singer. Planned stages go in `Dsp/Choir/`. Order and checklist: docs/roadmap.md.
 
 - `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
 - `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD) and `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly).

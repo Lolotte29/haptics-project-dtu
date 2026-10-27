@@ -11,15 +11,23 @@ namespace Haptics.Dsp
     /// </summary>
     public sealed class Choir
     {
-        private readonly VoiceProcessor[] _processors;
-        private readonly VoiceProcessor _mixProcessor; // null in single-source mode
+        private readonly PitchTracker[] _trackers; // null in single-source mode
+        private readonly FeatureExtractor _features;
+        private readonly Action<FeatureFrame> _onFeatures;
+        private readonly float[] _one = new float[1];
+        private int _voiceCount;
+        private bool _featuresUpdated;
 
+        /// <summary>Per-singer pitch (multi-source mode only; all default in single-source mode).</summary>
         public VoiceFrame[] Voices { get; }
-        public int VoiceCount => _processors.Length;
+        public int VoiceCount => _voiceCount;
         public ChoirMode Mode { get; }
 
-        /// <summary>Spectral features of the summed signal (of the single source when there is only one). Pitch is never set.</summary>
-        public VoiceFrame Mix { get; private set; }
+        /// <summary>
+        /// Spectral features (level, centroid, ...) of the summed signal, or of the single channel when there is only one.
+        /// These are never computed per singer.
+        /// </summary>
+        public FeatureFrame Mix { get; private set; }
 
         /// <summary>Optional chord recognition, used in multi-source mode only.</summary>
         public IHarmonyAnalyzer HarmonyAnalyzer { get; set; }
@@ -44,52 +52,59 @@ namespace Haptics.Dsp
         public Choir(int sampleRate, int voiceCount, int hopSize = 512)
         {
             if (voiceCount < 1) throw new ArgumentOutOfRangeException(nameof(voiceCount));
-            _processors = new VoiceProcessor[voiceCount];
+            _voiceCount = voiceCount;
             Voices = new VoiceFrame[voiceCount];
-            for (int i = 0; i < voiceCount; i++) _processors[i] = new VoiceProcessor(sampleRate, hopSize);
-
             Mode = voiceCount == 1 ? ChoirMode.SingleSource : ChoirMode.MultiSource;
             MixGain = 1f / (float)Math.Sqrt(voiceCount);
-            if (Mode == ChoirMode.SingleSource)
-                _processors[0].EnablePitch = false;
-            else
-                _mixProcessor = new VoiceProcessor(sampleRate, hopSize) { EnablePitch = false };
+
+            _features = new FeatureExtractor(sampleRate, 1024, hopSize);
+            _onFeatures = f => { Mix = f; _featuresUpdated = true; }; // allocated once
+
+            if (Mode == ChoirMode.MultiSource)
+            {
+                _trackers = new PitchTracker[voiceCount];
+                for (int i = 0; i < voiceCount; i++) _trackers[i] = new PitchTracker(sampleRate, hopSize);
+            }
         }
 
         /// <summary>
         /// Feeds <paramref name="frames"/> sample-frames of interleaved audio. Voices without a matching channel get silence.
-        /// Returns true if any <see cref="Voices"/> entry was refreshed.
+        /// Returns true if <see cref="Mix"/> or any <see cref="Voices"/> entry was refreshed.
         /// </summary>
         public bool Process(float[] interleaved, int frames, int channels)
         {
-            bool updated = false;
-            int used = Math.Min(channels, _processors.Length);
+            bool voicesUpdated = false;
+            _featuresUpdated = false;
+            int used = Math.Min(channels, _voiceCount);
             for (int n = 0; n < frames; n++)
             {
                 float sum = 0f;
-                for (int v = 0; v < _processors.Length; v++)
+                for (int v = 0; v < used; v++)
                 {
-                    float s = v < used ? interleaved[n * channels + v] : 0f;
+                    float s = interleaved[n * channels + v];
                     sum += s;
-                    if (_processors[v].Process(s))
+                    if (_trackers != null && _trackers[v].Process(s))
                     {
-                        Voices[v] = _processors[v].Latest;
-                        updated = true;
+                        Voices[v] = _trackers[v].Latest;
+                        voicesUpdated = true;
                     }
                 }
+                // Channels without input are silent voices: keep their trackers' windows moving.
+                if (_trackers != null)
+                    for (int v = used; v < _voiceCount; v++)
+                        if (_trackers[v].Process(0f))
+                        {
+                            Voices[v] = _trackers[v].Latest;
+                            voicesUpdated = true;
+                        }
 
-                if (_mixProcessor != null && _mixProcessor.Process(sum * MixGain))
-                    Mix = _mixProcessor.Latest;
+                _one[0] = sum * MixGain;
+                _features.Process(_one, 0, 1, _onFeatures);
             }
 
-            if (updated)
-            {
-                if (Mode == ChoirMode.SingleSource)
-                    Mix = Voices[0];
-                else if (HarmonyAnalyzer != null)
-                    Harmony = HarmonyAnalyzer.Analyze(Voices);
-            }
-            return updated;
+            if (voicesUpdated && HarmonyAnalyzer != null)
+                Harmony = HarmonyAnalyzer.Analyze(Voices);
+            return voicesUpdated || _featuresUpdated;
         }
     }
 }
