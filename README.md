@@ -10,9 +10,13 @@ Real-time musical feature extraction in Unity for a haptics project. Target setu
 | `unity/Assets/Scripts/Unity/` | Two small MonoBehaviours: `ChoirHost` (pipeline + on-screen display) and `AudioSourceInput`. |
 | `dsp/` | Plain .NET project + xUnit tests that compile the DSP files without Unity: `cd dsp && dotnet test Haptics.Dsp.Tests`. |
 | `docs/unity-setup.md` | How to open the project in Unity and try it. |
+| `docs/mic-input.md` | Microphone connection options and open questions (for the supervisor). |
+| `docs/concert-manual.md` | Sound check: gains, calibration, what to watch live. |
+| `docs/testing-features.md` | What each displayed feature should do when testing. |
 
 ## What it computes
 
-- **Per singer:** level (RMS), pitch (YIN), spectral centroid / spread / skewness / entropy / flux, zero-crossing rate, onsets.
-- **Ensemble:** roughness between voices (sensory dissonance) and loudness. Harmonic (key-aware) tension is not implemented yet.
+- **Per singer:** level (RMS), pitch (YIN), onsets. Each channel has its own gain trim and a peak/clip meter.
+- **On the sum of the voices:** loudness, spectral centroid / spread / skewness / entropy / flux, zero-crossing rate.
+- **Ensemble:** roughness between voices (sensory dissonance) from the per-voice pitches.
 - **Output:** one haptic stream (intensity + pulse) behind an `IHapticSink` interface. Nothing is sent over Bluetooth yet.

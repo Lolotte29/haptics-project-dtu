@@ -15,31 +15,39 @@ Analyse live singing and turn it into features that will drive haptic actuators.
 - Input today: **VB-Audio Virtual Cable** (stereo). Later: several mics straight into the computer, either one multichannel interface or several devices (undecided).
 - Output (**not started**): ESP over Bluetooth to a bracelet. Only the `IHapticSink` interface exists.
 
-Open questions (ask the user, don't assume): mic/interface model, latency budget (mic to vibration), number of bracelets and actuators, BLE vs Classic and how one stream is broadcast to many bracelets, how 4 voices combine into one stream.
+Decided so far: 4 mics plugged into one computer (how is open, see `docs/mic-input.md`); latency "as good as possible" (no number); probably fewer than 5 bracelets with up to 4 actuators each; Bluetooth is a later problem.
+
+Open questions (ask the user, don't assume): mic/interface model, how the mics are connected, latency budget, BLE vs Classic and how one stream is broadcast to many bracelets.
 
 ## Architecture
 
 ```
 audio in (channel i = singer i)
-  -> VoiceProcessor x N : level, spectral shape (FeatureExtractor), YIN pitch   -> VoiceFrame
-  -> ChoirAnalyzer      : roughness between voices, loudness                    -> ChoirFrame
-  -> HapticMapper       : one smoothed intensity + onset pulse                  -> HapticFrame
+  -> per-channel gain trim (Choir.SetGainDb; set in the HUD before the concert)
+  -> VoiceProcessor x N : level, onset, YIN pitch (per voice)                     -> VoiceFrame
+  -> FeatureExtractor   : loudness + spectral descriptors on the SUM of voices
+  -> ChoirAnalyzer      : roughness from voice pitches + the sum's features       -> ChoirFrame
+  -> HapticMapper       : one smoothed intensity + onset pulse                    -> HapticFrame
   -> IHapticSink        : (future) Bluetooth to ESP
 ```
 
-`Choir` wires the first two stages: `Choir.Process(interleavedSamples, frames, channels)`.
+Design decision: standard features (loudness, spectral shape) are computed once on the sum of the voices because every wearer gets one shared signal. Only YIN pitch, level and onsets stay per voice.
+
+`Choir` wires the first three stages: `Choir.Process(interleavedSamples, frames, channels)`. It also holds the per-channel gains, input peak meters and a level calibration (`StartCalibration` / `FinishCalibration`).
 
 - `unity/Assets/Scripts/Dsp/`: Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
 - `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline and mapper, HUD, optional sink) and `AudioSourceInput` (feeds an AudioSource, or a mic/VB-Cable device looped through it).
-- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (20 tests).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (27 tests).
+- `docs/`: `unity-setup.md`, `mic-input.md` (input options for the supervisor), `concert-manual.md` (sound check and gains), `testing-features.md` (what to expect per feature).
 
 ## Honest state
 
-- **Never run in Unity.** The scripts were written without an editor and may not compile. The DSP is only verified on synthetic signals.
+- **Scope:** the focus is the standard features (level, spectral descriptors, onsets, loudness) feeding the haptic stream. Harmony analysis (and note-level extraction) is important but **deferred**: don't propose or work on it unless the user brings it up.
+- **Runs in Unity** and compiles. YIN tracked a simple sung scale well; it has not been tried on dense or real choir/pop material. Other DSP is only verified on synthetic signals.
 - Spectral descriptors follow the MathWorks definitions used by the RASTA toolbox (AAU). Its public code (razvysme/Unity3D_Spectral_Analysis) was reviewed and not adopted: no license, static single-instance state, blocks the main thread, unwindowed FFT.
-- `ChoirAnalyzer` computes **roughness** (Plomp-Levelt/Sethares), which is not harmonic tension. Its `Scale` constant is calibrated on synthetic voices only.
-- **Harmonic tension** (chords in a key context) is the intended next feature. Needs key estimation plus a model such as key-relative chord distance (Lerdahl) or the spiral array (Chew/Herremans). Design not chosen yet.
-- `AudioSourceInput` only sees one AudioSource's channels (Unity may down-mix), so true 4-mic input needs another adapter, e.g. keijiro/Lasp (Unlicense, desktop, per-device/channel input; multi-stream behaviour unverified).
+- `ChoirAnalyzer` computes **roughness** (Plomp-Levelt/Sethares) from the YIN pitches. Its `Scale` constant (a gain mapping raw roughness to ~0..1) is calibrated on synthetic voices only.
+- The new gain/calibration HUD, the summed spectral features and per-voice onsets are covered by unit tests only; the HUD (IMGUI) has not been looked at in the editor yet.
+- `AudioSourceInput` only sees one AudioSource's channels (Unity may down-mix; `Microphone` is normally mono), so true 4-mic input needs another adapter, e.g. keijiro/Lasp (Unlicense, desktop, per-device/channel input; multi-stream behaviour unverified).
 - YIN cost on the audio thread (4 voices x ~86 frames/s) is unmeasured.
 
 ## Rules for agents

@@ -119,6 +119,107 @@ public class ChoirTests
         Assert.Equal(2, choir.Frame.VoicedCount);
     }
 
+    private static float Sine(double hz, int n, float amp) => amp * (float)Math.Sin(2 * Math.PI * hz * n / Sr);
+
+    /// <summary>Runs per-voice amplitudes for <paramref name="seconds"/>, one pure sine per channel.</summary>
+    private static void RunSines(Choir choir, double[] hz, float[] amp, double seconds, int start = 0, Action<Choir> perChunk = null)
+    {
+        const int chunk = 512;
+        int ch = hz.Length;
+        var buf = new float[chunk * ch];
+        int total = (int)(Sr * seconds);
+        for (int o = 0; o < total; o += chunk)
+        {
+            for (int n = 0; n < chunk; n++)
+                for (int v = 0; v < ch; v++)
+                    buf[n * ch + v] = Sine(hz[v], start + o + n, amp[v]);
+            choir.Process(buf, chunk, ch);
+            perChunk?.Invoke(choir);
+        }
+    }
+
+    [Fact]
+    public void LoudnessIsRmsOfTheSum()
+    {
+        // Two sines of different frequency are uncorrelated: power adds, RMS = sqrt(0.1^2/2 + 0.1^2/2).
+        var choir = new Choir(Sr, 2);
+        RunSines(choir, new[] { 300.0, 900.0 }, new[] { 0.1f, 0.1f }, 1.0);
+        Assert.InRange(choir.Frame.Loudness, 0.0995f, 0.1005f);
+    }
+
+    [Fact]
+    public void SpectralFeaturesDescribeTheSum()
+    {
+        var low = new Choir(Sr, 2);
+        RunSines(low, new[] { 300.0, 300.0 }, new[] { 0.1f, 0f }, 1.0);
+        var both = new Choir(Sr, 2);
+        RunSines(both, new[] { 300.0, 3000.0 }, new[] { 0.1f, 0.1f }, 1.0);
+        Assert.InRange(low.Frame.SpectralCentroid, 250f, 350f);
+        Assert.InRange(both.Frame.SpectralCentroid, 1000f, 2000f); // between the two voices
+        Assert.True(both.Frame.SpectralSpread > low.Frame.SpectralSpread * 3);
+    }
+
+    [Fact]
+    public void GainScalesAChannelBeforeAnalysis()
+    {
+        var choir = new Choir(Sr, 2);
+        choir.SetGainDb(0, -6.0206f); // half
+        choir.SetGain(1, 0f);          // muted
+        RunSines(choir, new[] { 300.0, 900.0 }, new[] { 0.2f, 0.2f }, 1.0);
+        Assert.InRange(choir.Voices[0].Rms, 0.0695f, 0.0720f); // 0.2 * 0.5 / sqrt2
+        Assert.Equal(0f, choir.Voices[1].Rms);
+        Assert.Equal(1, choir.Frame.VoicedCount);
+    }
+
+    [Fact]
+    public void CalibrationEqualisesChannelLevels()
+    {
+        var choir = new Choir(Sr, 3);
+        var hz = new[] { 262.0, 330.0, 392.0 };
+        var amp = new[] { 0.05f, 0.2f, 0.4f };
+        choir.StartCalibration();
+        RunSines(choir, hz, amp, 1.0);
+        Assert.True(choir.IsCalibrating);
+        choir.FinishCalibration(0.1f);
+        Assert.False(choir.IsCalibrating);
+
+        RunSines(choir, hz, amp, 1.0, start: Sr);
+        for (int v = 0; v < 3; v++) Assert.InRange(choir.Voices[v].Rms, 0.095f, 0.105f);
+    }
+
+    [Fact]
+    public void CalibrationKeepsGainOfSilentChannel()
+    {
+        var choir = new Choir(Sr, 2);
+        choir.SetGainDb(1, 6f);
+        float before = choir.GetGain(1);
+        choir.StartCalibration();
+        RunSines(choir, new[] { 262.0, 330.0 }, new[] { 0.2f, 0f }, 1.0);
+        choir.FinishCalibration();
+        Assert.Equal(before, choir.GetGain(1));
+    }
+
+    [Fact]
+    public void PeakMeterReportsClippingOfRawInput()
+    {
+        var choir = new Choir(Sr, 1);
+        choir.SetGainDb(0, -20f); // trim must not hide input clipping
+        RunSines(choir, new[] { 262.0 }, new[] { 1.0f }, 0.2);
+        Assert.True(choir.GetPeak(0) >= 0.99f);
+    }
+
+    [Fact]
+    public void OnsetOfOneVoiceIsDetectedWhileOthersSustain()
+    {
+        var choir = new Choir(Sr, 2);
+        var hz = new[] { 262.0, 392.0 };
+        // Voice 1 sustains; settle so its own flux is quiet.
+        RunSines(choir, hz, new[] { 0.2f, 0f }, 1.0);
+        bool onset = false;
+        RunSines(choir, hz, new[] { 0.2f, 0.2f }, 0.3, start: Sr, perChunk: c => onset |= c.Frame.Onset);
+        Assert.True(onset);
+    }
+
     [Fact]
     public void HapticMapperPulsesOnOnsetAndSmooths()
     {

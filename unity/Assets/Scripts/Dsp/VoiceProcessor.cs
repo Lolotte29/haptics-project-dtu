@@ -6,12 +6,7 @@ namespace Haptics.Dsp
     public struct VoiceFrame
     {
         public float Rms;
-        public float SpectralCentroid;
-        public float SpectralSpread;
-        public float SpectralSkewness;
-        public float SpectralEntropy;
-        public float ZeroCrossingRate;
-        public float SpectralFlux;
+        /// <summary>True when this singer started a note since the previous frame.</summary>
         public bool Onset;
         /// <summary>Fundamental frequency in Hz, or 0 when the voice is silent/unvoiced.</summary>
         public float PitchHz;
@@ -20,7 +15,10 @@ namespace Haptics.Dsp
         public bool Voiced => PitchHz > 0f;
     }
 
-    /// <summary>Per-singer analysis: level, spectral features, onset (<see cref="FeatureExtractor"/>) plus YIN pitch.</summary>
+    /// <summary>
+    /// Per-singer analysis: level and onset (from <see cref="FeatureExtractor"/>) plus YIN pitch.
+    /// The spectral descriptors of the choir are computed once on the summed signal in <see cref="Choir"/>.
+    /// </summary>
     public sealed class VoiceProcessor
     {
         private readonly FeatureExtractor _features;
@@ -73,12 +71,6 @@ namespace Haptics.Dsp
             Latest = new VoiceFrame
             {
                 Rms = f.Rms,
-                SpectralCentroid = f.SpectralCentroid,
-                SpectralSpread = f.SpectralSpread,
-                SpectralSkewness = f.SpectralSkewness,
-                SpectralEntropy = f.SpectralEntropy,
-                ZeroCrossingRate = f.ZeroCrossingRate,
-                SpectralFlux = f.SpectralFlux,
                 Onset = f.Onset,
                 PitchHz = pitch,
                 PitchConfidence = conf,

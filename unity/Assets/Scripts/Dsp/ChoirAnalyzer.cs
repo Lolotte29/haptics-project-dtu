@@ -7,11 +7,19 @@ namespace Haptics.Dsp
     {
         /// <summary>Sensory dissonance between voices, 0 (consonant/none) .. 1 (very rough).</summary>
         public float Roughness;
-        /// <summary>Loudest voice RMS.</summary>
+        /// <summary>RMS of the sum of all voices (what the audience hears).</summary>
         public float Loudness;
         /// <summary>True if any voice had an onset since the previous frame.</summary>
         public bool Onset;
         public int VoicedCount;
+
+        // Spectral descriptors of the summed signal.
+        public float SpectralCentroid;
+        public float SpectralSpread;
+        public float SpectralSkewness;
+        public float SpectralEntropy;
+        public float ZeroCrossingRate;
+        public float SpectralFlux;
     }
 
     /// <summary>
@@ -25,16 +33,13 @@ namespace Haptics.Dsp
         /// <summary>Maps the weighted-average roughness (~0.03 for a minor second) onto roughly 0..1.</summary>
         public static float Scale = 25f;
 
-        public static ChoirFrame Analyze(VoiceFrame[] voices, bool onset)
+        public static ChoirFrame Analyze(VoiceFrame[] voices, FeatureFrame mix, bool onset)
         {
-            float loudness = 0f, sum = 0f, norm = 0f;
+            float sum = 0f, norm = 0f;
             int voiced = 0;
 
             for (int i = 0; i < voices.Length; i++)
-            {
-                if (voices[i].Rms > loudness) loudness = voices[i].Rms;
                 if (voices[i].Voiced) voiced++;
-            }
 
             for (int i = 0; i < voices.Length; i++)
             {
@@ -58,7 +63,19 @@ namespace Haptics.Dsp
             }
 
             float roughness = norm > 1e-12f ? Math.Min(1f, sum / norm * Scale) : 0f;
-            return new ChoirFrame { Roughness = roughness, Loudness = loudness, Onset = onset, VoicedCount = voiced };
+            return new ChoirFrame
+            {
+                Roughness = roughness,
+                Loudness = mix.Rms,
+                Onset = onset,
+                VoicedCount = voiced,
+                SpectralCentroid = mix.SpectralCentroid,
+                SpectralSpread = mix.SpectralSpread,
+                SpectralSkewness = mix.SpectralSkewness,
+                SpectralEntropy = mix.SpectralEntropy,
+                ZeroCrossingRate = mix.ZeroCrossingRate,
+                SpectralFlux = mix.SpectralFlux,
+            };
         }
 
         /// <summary>Roughness of two pure tones (unit amplitudes).</summary>

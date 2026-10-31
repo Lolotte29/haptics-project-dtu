@@ -4,12 +4,21 @@ using UnityEngine;
 
 /// <summary>
 /// Owns the analysis pipeline (<see cref="Choir"/> + <see cref="HapticMapper"/>). Any input component calls
-/// <see cref="Push"/> with interleaved audio (voice i reads channel i). Shows a debug HUD.
+/// <see cref="Push"/> with interleaved audio (voice i reads channel i). Shows a debug / sound-check HUD with
+/// per-channel gain trim and one-click level calibration. Gains are saved in PlayerPrefs between runs.
 /// </summary>
 public class ChoirHost : MonoBehaviour
 {
+    private const string GainKey = "choir.gainDb.";
+
     [SerializeField] private int voiceCount = 4;
     [SerializeField] private bool showHud = true;
+    [Tooltip("Starting trim per channel in dB (a saved value from the HUD overrides it). Extra entries are ignored.")]
+    [SerializeField] private float[] gainDb = new float[4];
+    [Tooltip("Average level (RMS) each channel is brought to by Calibrate. Typical sung level.")]
+    [SerializeField] private float calibrationTargetRms = 0.1f;
+    [Tooltip("How strongly the summed loudness drives the vibration. Raise if it feels weak.")]
+    [SerializeField] private float loudnessGain = 6f;
 
     private Choir _choir;
     private readonly HapticMapper _mapper = new HapticMapper();
@@ -19,6 +28,7 @@ public class ChoirHost : MonoBehaviour
     public ChoirFrame Frame { get; private set; }
     public HapticFrame Haptic { get; private set; }
     public VoiceFrame[] Voices => _choir?.Voices;
+    public Choir Choir => _choir;
 
     /// <summary>Set to receive one HapticFrame per Unity Update (e.g. the future Bluetooth sender).</summary>
     public IHapticSink Sink { get; set; }
@@ -26,6 +36,12 @@ public class ChoirHost : MonoBehaviour
     private void Awake()
     {
         _choir = new Choir(AudioSettings.outputSampleRate, voiceCount);
+        _mapper.LoudnessGain = loudnessGain;
+        for (int i = 0; i < voiceCount; i++)
+        {
+            float db = i < gainDb.Length ? gainDb[i] : 0f;
+            _choir.SetGainDb(i, PlayerPrefs.GetFloat(GainKey + i, db));
+        }
     }
 
     /// <summary>Called from the audio thread by an input component.</summary>
@@ -41,6 +57,7 @@ public class ChoirHost : MonoBehaviour
 
     private void Update()
     {
+        _mapper.LoudnessGain = loudnessGain; // lets the Inspector value be tuned live
         if (Sink == null) return;
         var h = Haptic;
         h.Pulse = _pulsePending;
@@ -48,22 +65,64 @@ public class ChoirHost : MonoBehaviour
         Sink.Send(h);
     }
 
+    private void SaveGains()
+    {
+        for (int i = 0; i < _choir.VoiceCount; i++) PlayerPrefs.SetFloat(GainKey + i, _choir.GetGainDb(i));
+        PlayerPrefs.Save();
+    }
+
     private void OnGUI()
     {
         if (!showHud || _choir == null) return;
         var voices = _choir.Voices;
-        GUILayout.BeginArea(new Rect(10, 10, 360, 260), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(10, 10, 560, 420), GUI.skin.box);
+
         for (int i = 0; i < voices.Length; i++)
         {
             var v = voices[i];
+            float peak = _choir.GetPeak(i);
+            GUILayout.BeginHorizontal();
             string note = v.Voiced ? NoteName(v.PitchHz) : "--";
-            GUILayout.Label($"Voice {i + 1}: {note,-5} {v.PitchHz,6:0.0} Hz  level {v.Rms:0.000}");
+            GUILayout.Label($"V{i + 1} {note,-4} {v.PitchHz,6:0.0} Hz", GUILayout.Width(150));
+            DrawBar(v.Rms / (calibrationTargetRms * 2f), peak >= 0.99f ? Color.red : Color.green, 150f);
+            GUILayout.Label(peak >= 0.99f ? "CLIP" : $"{peak:0.00}", GUILayout.Width(40));
+            if (GUILayout.Button("-", GUILayout.Width(26))) { _choir.SetGainDb(i, _choir.GetGainDb(i) - 1f); }
+            GUILayout.Label($"{_choir.GetGainDb(i):+0.0;-0.0;0.0} dB", GUILayout.Width(65));
+            if (GUILayout.Button("+", GUILayout.Width(26))) { _choir.SetGainDb(i, _choir.GetGainDb(i) + 1f); }
+            GUILayout.EndHorizontal();
         }
+
+        GUILayout.BeginHorizontal();
+        if (_choir.IsCalibrating)
+        {
+            if (GUILayout.Button("Finish calibration")) { _choir.FinishCalibration(calibrationTargetRms); SaveGains(); }
+            GUILayout.Label("Everyone sing at concert volume...");
+        }
+        else
+        {
+            if (GUILayout.Button("Calibrate levels")) _choir.StartCalibration();
+            if (GUILayout.Button("Save gains")) SaveGains();
+            if (GUILayout.Button("Reset gains"))
+                for (int i = 0; i < _choir.VoiceCount; i++) _choir.SetGainDb(i, 0f);
+        }
+        GUILayout.EndHorizontal();
+
         var f = Frame;
-        GUILayout.Label($"Roughness {f.Roughness:0.00}   Loudness {f.Loudness:0.000}   Voiced {f.VoicedCount}");
+        GUILayout.Label($"Sum: loudness {f.Loudness:0.000}   voiced {f.VoicedCount}   roughness {f.Roughness:0.00}");
+        GUILayout.Label($"Sum: centroid {f.SpectralCentroid,6:0} Hz  spread {f.SpectralSpread,6:0} Hz  skew {f.SpectralSkewness:0.0}  entropy {f.SpectralEntropy:0.00}  ZCR {f.ZeroCrossingRate:0.00}  flux {f.SpectralFlux:0.0}");
         GUILayout.Label($"Haptic intensity {Haptic.Intensity:0.00}");
         GUILayout.HorizontalSlider(Haptic.Intensity, 0f, 1f);
         GUILayout.EndArea();
+    }
+
+    private static void DrawBar(float fraction, Color color, float width)
+    {
+        Rect r = GUILayoutUtility.GetRect(width, 16f, GUILayout.Width(width));
+        GUI.Box(r, GUIContent.none);
+        var old = GUI.color;
+        GUI.color = color;
+        GUI.DrawTexture(new Rect(r.x, r.y, r.width * Mathf.Clamp01(fraction), r.height), Texture2D.whiteTexture);
+        GUI.color = old;
     }
 
     private static readonly string[] Names = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
