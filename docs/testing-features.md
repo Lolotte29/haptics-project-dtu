@@ -18,7 +18,7 @@ Test with a **single voice first** (other channels muted or at -40 dB), then wit
 |------|---------|--------|
 | **Pitch** | Hold a steady note | Stable note name and Hz within about 1%. Brief octave jumps or `--` at note starts, vibrato edges and breaths are normal. Constant jumping means the level is too low or the room too noisy. |
 | **Silence** | Stop singing | Pitch `--` and level near 0 within a fraction of a second. |
-| **Level bar** | Soft, normal, loud | Bar grows with loudness. After calibration, normal singing reaches about half of the bar. |
+| **Level bar** | Soft, normal, loud | Bar grows with loudness. With the gains matched, normal singing reaches about half of the bar. |
 | **Peak / CLIP** | Sing as loud as possible | Peak below 1.0. `CLIP` means lower the hardware gain. |
 | **Gain** | Press `-` / `+` | Level changes by that many dB (6 dB = half or double). Peak value does not change (it is measured before the gain). |
 
@@ -47,4 +47,4 @@ Test with a **single voice first** (other channels muted or at -40 dB), then wit
 | Two voices show the same note | Microphone bleed: one mic hears the neighbour. Lower the quieter mic's gain or move the mics. |
 | Pitch always an octave off | Voice outside the YIN search range (100-1100 Hz by default). |
 | Only voice 1 (and 2) respond | The input adapter only delivers 1-2 channels; see [mic-input.md](mic-input.md). |
-| The mix level is dominated by one singer | Calibrate levels again. |
+| The mix level is dominated by one singer | Lower that channel's gain with `-`. |

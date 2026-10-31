@@ -18,10 +18,7 @@ namespace Haptics.Dsp
         private readonly float[] _gains;
         private readonly float[] _peaks;
         private readonly float[] _meanSq;      // smoothed mean square per channel, after gain
-        private readonly double[] _calSum;
-        private readonly int[] _calCount;
         private readonly float _levelCoef;
-        private volatile bool _calibrating;
         private int _voiceCount;
         private bool _featuresUpdated;
 
@@ -48,9 +45,6 @@ namespace Haptics.Dsp
         /// <summary>Per-sample decay of the peak meters (about 0.5 s at 44.1 kHz).</summary>
         public float PeakDecay = 0.99995f;
 
-        /// <summary>Channel level below this is ignored by calibration (silence between phrases).</summary>
-        public float CalibrationFloorRms = 0.002f;
-
         /// <summary>Number of voices with a detected pitch in their latest frame.</summary>
         public int VoicedCount
         {
@@ -72,8 +66,6 @@ namespace Haptics.Dsp
             _gains = new float[voiceCount];
             _peaks = new float[voiceCount];
             _meanSq = new float[voiceCount];
-            _calSum = new double[voiceCount];
-            _calCount = new int[voiceCount];
             _levelCoef = 1f / (0.05f * sampleRate); // ~50 ms smoothing
             for (int i = 0; i < voiceCount; i++) _gains[i] = 1f;
 
@@ -101,30 +93,6 @@ namespace Haptics.Dsp
 
         /// <summary>Smoothed RMS level of a channel after its gain.</summary>
         public float GetLevel(int voice) => (float)Math.Sqrt(_meanSq[voice]);
-
-        public bool IsCalibrating => _calibrating;
-
-        /// <summary>Starts averaging each channel's level. Have everyone sing at concert volume, then call <see cref="FinishCalibration"/>.</summary>
-        public void StartCalibration()
-        {
-            for (int i = 0; i < _calSum.Length; i++) { _calSum[i] = 0; _calCount[i] = 0; }
-            _calibrating = true;
-        }
-
-        /// <summary>
-        /// Sets every gain so that the channel's average level while singing equals <paramref name="targetRms"/>.
-        /// Channels that stayed silent keep their gain. Gains are limited to -30..+30 dB.
-        /// </summary>
-        public void FinishCalibration(float targetRms = 0.1f)
-        {
-            _calibrating = false;
-            for (int v = 0; v < _gains.Length; v++)
-            {
-                if (_calCount[v] == 0) continue;
-                float mean = (float)(_calSum[v] / _calCount[v]); // measured with the current gain applied
-                _gains[v] = Math.Min(31.6f, Math.Max(0.0316f, _gains[v] * targetRms / mean));
-            }
-        }
 
         /// <summary>
         /// Feeds <paramref name="frames"/> sample-frames of interleaved audio. Voices without a matching channel get silence.
@@ -163,15 +131,6 @@ namespace Haptics.Dsp
                 _one[0] = sum * MixGain;
                 _features.Process(_one, 0, 1, _onFeatures);
             }
-
-            if (_calibrating)
-                for (int v = 0; v < used; v++)
-                {
-                    float level = GetLevel(v);
-                    if (level < CalibrationFloorRms) continue;
-                    _calSum[v] += level;
-                    _calCount[v]++;
-                }
 
             if (voicesUpdated && HarmonyAnalyzer != null)
                 Harmony = HarmonyAnalyzer.Analyze(Voices);

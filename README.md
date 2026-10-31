@@ -13,7 +13,7 @@ Real-time musical feature extraction in Unity for a haptics project. Target setu
 | `docs/scripts.md` | Map of every script, grouped by pipeline stage, with status. |
 | `docs/roadmap.md` | What to implement next, in order. |
 | `docs/mic-input.md` | Microphone connection options and open questions (for the supervisor). |
-| `docs/concert-manual.md` | Sound check: gains, calibration, what to watch live. |
+| `docs/concert-manual.md` | Sound check: gains, what to watch live. |
 | `docs/testing-features.md` | What each displayed feature should do when testing. |
 
 ## What it computes

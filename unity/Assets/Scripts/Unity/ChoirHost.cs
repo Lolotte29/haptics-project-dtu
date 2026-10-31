@@ -5,7 +5,7 @@ using UnityEngine;
 /// <summary>
 /// Owns the analysis pipeline (<see cref="Choir"/>). Any input component calls
 /// <see cref="Push"/> with interleaved audio (voice i reads channel i). Shows a debug / sound-check HUD with
-/// per-channel gain trim and one-click level calibration. Gains are saved in PlayerPrefs between runs.
+/// per-channel gain trim (set by hand before the concert). Gains are saved in PlayerPrefs between runs.
 /// </summary>
 public class ChoirHost : MonoBehaviour
 {
@@ -18,8 +18,8 @@ public class ChoirHost : MonoBehaviour
 
     [Tooltip("Starting trim per channel in dB (a value saved from the HUD overrides it). Extra entries are ignored.")]
     [SerializeField] private float[] gainDb = new float[4];
-    [Tooltip("Average level (RMS) each channel is brought to by Calibrate. Typical sung level.")]
-    [SerializeField] private float calibrationTargetRms = 0.1f;
+    [Tooltip("Channel RMS level that fills the HUD level bar. Typical sung level is about half of it.")]
+    [SerializeField] private float meterFullScaleRms = 0.2f;
 
     private Choir _choir;
 
@@ -94,7 +94,7 @@ public class ChoirHost : MonoBehaviour
             string note = v.Voiced ? NoteName(v.PitchHz) : "--";
             GUILayout.BeginHorizontal();
             GUILayout.Label($"V{i + 1} {note,-4} {v.PitchHz,6:0.0} Hz", GUILayout.Width(140));
-            DrawBar(_choir.GetLevel(i) / (calibrationTargetRms * 2f), clip ? Color.red : Color.green, 120f);
+            DrawBar(_choir.GetLevel(i) / meterFullScaleRms, clip ? Color.red : Color.green, 120f);
             GUILayout.Label(clip ? "CLIP" : $"{peak:0.00}", GUILayout.Width(40));
             if (GUILayout.Button("-", GUILayout.Width(26))) _choir.SetGainDb(i, _choir.GetGainDb(i) - 1f);
             GUILayout.Label($"{_choir.GetGainDb(i):+0.0;-0.0;0.0} dB", GUILayout.Width(65));
@@ -103,18 +103,9 @@ public class ChoirHost : MonoBehaviour
         }
 
         GUILayout.BeginHorizontal();
-        if (_choir.IsCalibrating)
-        {
-            if (GUILayout.Button("Finish calibration")) { _choir.FinishCalibration(calibrationTargetRms); SaveGains(); }
-            GUILayout.Label("Everyone sing at concert volume...");
-        }
-        else
-        {
-            if (GUILayout.Button("Calibrate levels")) _choir.StartCalibration();
-            if (GUILayout.Button("Save gains")) SaveGains();
-            if (GUILayout.Button("Reset gains"))
-                for (int i = 0; i < _choir.VoiceCount; i++) _choir.SetGainDb(i, 0f);
-        }
+        if (GUILayout.Button("Save gains")) SaveGains();
+        if (GUILayout.Button("Reset gains"))
+            for (int i = 0; i < _choir.VoiceCount; i++) _choir.SetGainDb(i, 0f);
         GUILayout.EndHorizontal();
 
         GUILayout.Label($"Voiced {_choir.VoicedCount}/{voices.Length}   Mode {_choir.Mode}");

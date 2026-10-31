@@ -22,7 +22,7 @@ Fix any compile errors in the Console first (the scripts have never been compile
 
 ## 3. Try it
 
-**Without hardware:** untick *Use Microphone*, assign a singing clip to the AudioSource (Loop + Play On Awake) and press Play. The top-left display shows each voice's pitch, note, level, peak and gain trim (with calibrate / save buttons), and how many voices are detected. See [testing-features.md](testing-features.md) for what to expect and [concert-manual.md](concert-manual.md) for the sound check.
+**Without hardware:** untick *Use Microphone*, assign a singing clip to the AudioSource (Loop + Play On Awake) and press Play. The top-left display shows each voice's pitch, note, level, peak and gain trim (with save / reset buttons), and how many voices are detected. See [testing-features.md](testing-features.md) for what to expect and [concert-manual.md](concert-manual.md) for the sound check.
 
 **With VB-Cable:** on `AudioSourceInput` tick *Use Microphone*. Device names are printed to the Console at start; paste the VB-Cable one (typically `CABLE Output (VB-Audio Virtual Cable)`) into *Microphone Device*. To avoid hearing it twice, create an Audio Mixer, set its group to -80 dB, and use that as the AudioSource output (verify that the analysis still receives audio). A stereo cable gives voices 1 and 2 only; the others show `--`.
 
@@ -31,7 +31,7 @@ Fix any compile errors in the Console first (the scripts have never been compile
 - Console errors or compile errors.
 - Does a sung note show a stable, correct pitch and note name?
 - Do the voice rows update smoothly, with `--` for channels that carry no signal?
-- Do the gain `-`/`+` buttons and *Calibrate levels* work, and are the values still there after stopping and restarting Play?
+- Do the gain `-`/`+` and *Save gains* buttons work, and are the values still there after stopping and restarting Play?
 - Does the display show the right mode and a sensible mix level/centroid (Voice Count 1 vs 4)?
 - Audio-thread CPU in the Profiler (Window > Analysis > Profiler).
 

@@ -23,7 +23,7 @@ Open questions (ask the user, don't assume): mic/interface model, latency budget
 
 ```
 audio in (channel i = singer i)
-  -> per-channel gain trim, peak meter, level calibration (Choir.SetGainDb; set in the HUD before the concert)
+  -> per-channel gain trim, peak/level meters (Choir.SetGainDb; adjusted by hand in the HUD before the concert)
   -> PitchTracker x N   : YIN pitch per singer, nothing else                    -> VoiceFrame (feeds harmony)
   -> sum of channels    : level + spectral features (FeatureExtractor), once    -> Choir.Mix
         (exists up to here; with one source: features on that channel, no YIN)
@@ -44,7 +44,7 @@ audio in (channel i = singer i)
 
 - **Runs in Unity** and compiles. YIN tracked a simple sung scale well; it has not been tried on dense or real choir material. The rest of the DSP is verified on synthetic signals only.
 - **Focus now:** the standard features (level, spectral descriptors, onsets) and getting real input working. Harmony stays the main goal but is deliberately not being worked on yet: don't propose or start it unless the user brings it up.
-- The per-channel gain/calibration HUD (IMGUI) is covered by unit tests of `Choir` only; it has not been looked at in the editor.
+- The per-channel gain HUD (IMGUI) is covered by unit tests of `Choir` only; it has not been looked at in the editor.
 - Spectral descriptors follow the MathWorks definitions used by the RASTA toolbox (AAU). Its public code (razvysme/Unity3D_Spectral_Analysis) was reviewed twice and still not adopted. Licence: none in the repo; the user knows the author and considers it fine (get that in writing or a LICENSE file before relying on it). Static single-instance state would be acceptable if it only ran on the summed mix or a single source. Still blocking: `FixedUpdate` waits on `Task.Result` (main-thread stall), the audio thread contends on a lock while 16k samples are copied, the FFT is unwindowed and 16384 samples long (~340 ms, too laggy for haptics), the default 200 Hz low-pass distorts voice descriptors, centroid is smoothed over 1000 updates, "tilt" is really skewness, ZCR is in Hz, the bin range stops at fs/4, and it needs MathNet.Numerics (NuGet) and a MonoBehaviour, so it cannot live in the Unity-free `Dsp/` or be unit-tested. It is usable only as an offline cross-check of our numbers.
 - An earlier roughness (Plomp-Levelt) analyser and a haptic mapper were removed on purpose: too early. They are in git history before the "Trim Dsp to features + pitch" commit.
 - **Harmonic tension** (chords in a key context) is the main goal. Needs key estimation plus a model such as key-relative chord distance (Lerdahl) or the spiral array (Chew/Herremans). Design not chosen yet.

@@ -99,34 +99,6 @@ public class ChoirTests
     }
 
     [Fact]
-    public void CalibrationEqualisesChannelLevels()
-    {
-        var choir = new Choir(Sr, 3);
-        var hz = new[] { 262.0, 330.0, 392.0 };
-        var amp = new[] { 0.05f, 0.2f, 0.4f };
-        choir.StartCalibration();
-        RunSines(choir, hz, amp, 1.0);
-        Assert.True(choir.IsCalibrating);
-        choir.FinishCalibration(0.1f);
-        Assert.False(choir.IsCalibrating);
-
-        RunSines(choir, hz, amp, 1.0, start: Sr);
-        for (int v = 0; v < 3; v++) Assert.InRange(choir.GetLevel(v), 0.095f, 0.105f);
-    }
-
-    [Fact]
-    public void CalibrationKeepsGainOfSilentChannel()
-    {
-        var choir = new Choir(Sr, 2);
-        choir.SetGainDb(1, 6f);
-        float before = choir.GetGain(1);
-        choir.StartCalibration();
-        RunSines(choir, new[] { 262.0, 330.0 }, new[] { 0.2f, 0f }, 1.0);
-        choir.FinishCalibration();
-        Assert.Equal(before, choir.GetGain(1));
-    }
-
-    [Fact]
     public void PeakMeterReportsClippingOfRawInput()
     {
         var choir = new Choir(Sr, 1);
