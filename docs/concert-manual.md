@@ -4,7 +4,7 @@ Checklist for running the system live. Draft: written without hardware, so adjus
 
 ## What the gains are for
 
-The haptic stream comes from the **sum of the four voices**, so the mic levels decide who is felt. If one channel is too loud, that singer dominates the loudness and spectrum. Per-channel pitch (YIN) and note onsets also depend on each channel having a sensible level. Therefore: even the channels out before the concert.
+The haptic features come from the **sum of the four voices**, so the mic levels decide who is felt. If one channel is too loud, that singer dominates the level and spectrum. Per-channel pitch (YIN) also depends on each channel having a sensible level. Therefore: even the channels out before the concert.
 
 ## Before the day
 
@@ -18,8 +18,7 @@ The haptic stream comes from the **sum of the four voices**, so the mic levels d
 2. **Hardware gain first.** Ask each singer, one at a time, to sing at their loudest. Turn the preamp/interface gain until the peak value reads around 0.5-0.8. If `CLIP` appears (red bar), lower the hardware gain. The in-app gain cannot repair a clipped input.
 3. **Calibrate levels.** Press **Calibrate levels**, ask everyone to sing together at concert volume for 10-15 seconds, then press **Finish calibration**. Each channel's average level is set to the target (`Calibration Target Rms`, default 0.1) and the gains are saved.
 4. **Fine-tune by hand.** `-` and `+` change a channel by 1 dB. Make the level bars about the same length for normal singing. **Save gains** stores them (PlayerPrefs on that computer). **Reset gains** returns to 0 dB.
-5. **Silence check.** With everyone quiet, level bars should be near zero and the haptic intensity near 0. If a channel shows level in silence, that mic picks up the room or neighbours: move it or lower its hardware gain.
-6. **Vibration strength.** Put on a bracelet (once the output exists). If the vibration is weak or always saturated, change `Loudness Gain` on **ChoirHost** (can be edited while running).
+5. **Silence check.** With everyone quiet, level bars and the mix level should be near zero. If a channel shows level in silence, that mic picks up the room or neighbours: move it or lower its hardware gain.
 
 ## During the concert
 

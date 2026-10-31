@@ -1,0 +1,60 @@
+# Script map
+
+Goal: features + YIN pitch -> chord / key recognition -> harmonic tension -> (later) haptic mapping.
+Only the first part exists. Planned scripts are listed at the bottom and are **not created yet**.
+
+```
+audio in -> Voice/ (per singer: pitch; features on the mix) -> Choir/ (ensemble: chord, key, tension) -> haptics (later)
+              ^ Core/ primitives (FFT, YIN)
+```
+
+`Choir` picks its mode from the number of sources (`voiceCount`):
+
+```
+1 source   : channel 0 -> FeatureExtractor -> Mix                              (features only, no pitch)
+
+2+ sources : channel i -> PitchTracker i (YIN)  -> Voices[i] -> IHarmonyAnalyzer -> Harmony
+             sum of all channels x 1/sqrt(N) -> FeatureExtractor               -> Mix
+```
+
+Read the results from `Choir`: `Voices` (per singer), `Mix` (features of the summed signal, or of the single source), `Harmony` (chord; root -1 until an analyzer is plugged in via `Choir.HarmonyAnalyzer`).
+
+Status: **done** = implemented and unit-tested on synthetic signals; **untested** = written, never run in Unity.
+
+## Exists: `unity/Assets/Scripts/Dsp/` (Unity-free, tested by `dsp/`)
+
+| Folder | Script | What it does | Status |
+|--------|--------|--------------|--------|
+| `Core/` | `Fft.cs` | Radix-2 FFT + Hann window | done |
+| `Core/` | `Yin.cs` | YIN pitch detector (100-1100 Hz) | done (CPU cost unmeasured) |
+| `Voice/` | `FeatureFrame.cs` | Spectral features of one frame (data) | done |
+| `Voice/` | `FeatureExtractor.cs` | RMS, centroid, spread, skewness, entropy, ZCR, flux, onset | done |
+| `Voice/` | `VoiceFrame.cs` | What is known about one singer: pitch and confidence (data) | done |
+| `Voice/` | `PitchTracker.cs` | Per-singer YIN pitch with a silence gate -> `VoiceFrame` | done |
+| `Choir/` | `Choir.cs` | Runs N `PitchTracker` (N >= 2) and one `FeatureExtractor` on the sum (or the single channel). Fills `Voices` (pitch), `Mix` (`FeatureFrame`), `Harmony` | done |
+| `Choir/` | `ChoirMode.cs` | `SingleSource` (1 voice) or `MultiSource` (2+), chosen from `voiceCount` | done |
+| `Choir/` | `HarmonyFrame.cs` | Chord result (root pitch class, confidence); later key and tension | done (data) |
+| `Choir/` | `IHarmonyAnalyzer.cs` | Plug-in point for chord recognition; set as `Choir.HarmonyAnalyzer`. No implementation yet | interface only |
+
+## Exists: `unity/Assets/Scripts/Unity/`
+
+| Script | What it does | Status |
+|--------|--------------|--------|
+| `ChoirHost.cs` | Owns `Choir` (`voiceCount` field sets the mode), exposes `HarmonyAnalyzer`, debug display of pitch/note per voice, mode, mix centroid/level, chord root | untested in Unity |
+| `FeatureVisualizer.cs` | Optional; add to the `Choir` GameObject. Scrolling plots: pitch with one line per singer, then RMS, centroid, spread, skewness, entropy, ZCR, flux + onsets of the mix | untested in Unity |
+| `AudioSourceInput.cs` | Feeds a clip (audio thread) or a capture device read directly from the mic buffer (main thread, VB-Cable) into `ChoirHost` | untested; reads one device's channels only |
+
+Tests: `dsp/Haptics.Dsp.Tests/` (`cd dsp && dotnet test Haptics.Dsp.Tests`), one file per tested area: `YinTests`, `FeatureExtractorTests`, `PitchRobustnessTests`, `ChoirTests` (modes, mix, harmony hook), with shared synthetic signals in `TestSignals`.
+
+## Planned (not created): add one at a time, see [roadmap.md](roadmap.md)
+
+| # | Script (in `Dsp/Choir/`) | Input -> output |
+|---|--------------------------|-----------------|
+| 1 | `PitchClass.cs` | pitch in Hz -> note, pitch class 0..11, cents off |
+| 2 | `ChordRecognizer.cs` | all `VoiceFrame` pitches -> chord (root + quality); implements `IHarmonyAnalyzer` |
+| 3 | `KeyEstimator.cs` | chord / pitch-class history -> running key (tonic + mode) |
+| 4 | `HarmonicTension.cs` | chord + key -> tension 0..1 |
+| 5 | extend `HarmonyFrame` | add key and tension next to the chord; exposed as `Choir.Harmony` |
+| 6 | `Dsp/Haptic/` | tension + loudness -> intensity/pulse, then the Bluetooth sink |
+
+Rules: one type per file, file named after the type, folder = pipeline stage.

@@ -8,10 +8,9 @@ Test with a **single voice first** (other channels muted or at -40 dB), then wit
 
 | Feature | Computed on | Shown as |
 |---------|-------------|----------|
-| Pitch / note (YIN), level, onset | each voice separately | `V1 C4 261.6 Hz` and the level bar |
-| Loudness, centroid, spread, skewness, entropy, ZCR, flux | the **sum** of all voices | `Sum:` lines |
-| Roughness | per-voice pitches combined | `roughness` |
-| Haptic intensity / pulse | from the above | slider at the bottom |
+| Pitch / note (YIN) | each voice separately | `V1 C4 261.6 Hz` |
+| Channel level, peak | each channel (for gain setting only) | level bar, peak value |
+| Level, centroid, spread, skewness, entropy, ZCR, flux, onset | the **sum** of all voices (scaled by 1/sqrt(N)) | `Mix:` line, and the plots in `FeatureVisualizer` if added |
 
 ## Per-voice checks
 
@@ -27,7 +26,7 @@ Test with a **single voice first** (other channels muted or at -40 dB), then wit
 
 | Feature | What it means | Expect |
 |---------|---------------|--------|
-| **loudness** | RMS of the sum | Rises when more singers join. Four equal voices give about twice one voice (uncorrelated signals add in power), not four times. |
+| **level** | RMS of the sum | Rises with how loud the choir sings. The sum is scaled by 1/sqrt(N), so four equal, uncorrelated voices read about the same as one voice alone. |
 | **centroid** (Hz) | Brightness | Low for dark "oo", higher for bright "ee", very high for "s"/"sh". Adding a high-pitched voice raises it. Typical sung vowels: a few hundred to a few thousand Hz. |
 | **spread** (Hz) | How wide the spectrum is | Grows when voices are far apart in pitch or the sound is noisy. |
 | **skew** | Asymmetry around the centroid | Positive: energy tail toward high frequencies (typical for voice). Mostly useful relative to itself. |
@@ -35,21 +34,10 @@ Test with a **single voice first** (other channels muted or at -40 dB), then wit
 | **ZCR** (0..1) | Zero-crossing rate | Very low for low steady vowels (around 0.01-0.05), jumps for "s"/"sh" and breathiness. |
 | **flux** | Change of spectrum | Spikes at note starts and consonants, near 0 on a held chord. |
 
-## Onset and pulse
+## Onset
 
-- A pulse should fire when **any** singer starts a note, including when the others are holding a chord (this is tested with synthetic tones).
-- Expect misses on very soft or legato entries (a slurred note change may not count as a new onset) and a few extra pulses on consonants like "t" or "s". If pulses fire all the time, raise `FeatureExtractor.Sensitivity` or `MinFlux`; if they are missed, lower them.
-
-## Roughness
-
-- Two singers on a unison, octave or fifth: low. A semitone or whole tone apart: clearly higher. In the unit tests a tight 4-note cluster scores above 0.3 and a major chord well below that.
-- Real voices (vibrato, slightly off-pitch) will not hit those exact values. The `ChoirAnalyzer.Scale` gain scales roughness to 0..1: if it is always close to 0, increase it; if pinned at 1, decrease it.
-- Roughness needs at least 2 voices with a detected pitch.
-
-## Haptic intensity
-
-- Silence gives 0. It rises with loudness (and a bit more with roughness) and falls more slowly than it rises (attack faster than release).
-- If the intensity is always saturated or very low, change `Loudness Gain` on ChoirHost.
+- Onsets are detected on the **sum** (flux above a moving average), not per singer. A new voice entering over a sustained chord is only caught if it changes the spectrum enough.
+- Expect misses on very soft or legato entries and a few extra onsets on consonants like "t" or "s". If onsets fire all the time, raise `FeatureExtractor.Sensitivity` or `MinFlux`; if they are missed, lower them.
 
 ## When something looks wrong
 
@@ -59,4 +47,4 @@ Test with a **single voice first** (other channels muted or at -40 dB), then wit
 | Two voices show the same note | Microphone bleed: one mic hears the neighbour. Lower the quieter mic's gain or move the mics. |
 | Pitch always an octave off | Voice outside the YIN search range (100-1100 Hz by default). |
 | Only voice 1 (and 2) respond | The input adapter only delivers 1-2 channels; see [mic-input.md](mic-input.md). |
-| Loudness is dominated by one singer | Calibrate levels again. |
+| The mix level is dominated by one singer | Calibrate levels again. |

@@ -1,19 +1,10 @@
 using System;
 using Haptics.Dsp;
 using Xunit;
+using static TestSignals;
 
 public class ChoirTests
 {
-    private const int Sr = 44100;
-
-    /// <summary>Harmonic "voice": fundamental plus a few decaying partials.</summary>
-    private static float Voice(double hz, int n, float amp = 0.2f)
-    {
-        double t = (double)n / Sr, s = 0;
-        for (int k = 1; k <= 4; k++) s += Math.Sin(2 * Math.PI * hz * k * t) / k;
-        return amp * (float)s;
-    }
-
     private static Choir RunChoir(double[] pitches, double seconds = 1.0, int chunk = 441)
     {
         var choir = new Choir(Sr, pitches.Length);
@@ -29,31 +20,6 @@ public class ChoirTests
         return choir;
     }
 
-    [Theory]
-    [InlineData(130.8)]
-    [InlineData(220.0)]
-    [InlineData(440.0)]
-    [InlineData(880.0)]
-    public void YinFindsPitch(double hz)
-    {
-        var yin = new Yin(Sr);
-        var x = new float[yin.BufferSize];
-        for (int i = 0; i < x.Length; i++) x[i] = Voice(hz, i);
-        float f = yin.Detect(x, out float conf);
-        Assert.InRange(f, hz * 0.99, hz * 1.01);
-        Assert.True(conf > 0.8f);
-    }
-
-    [Fact]
-    public void YinReportsNoPitchForNoise()
-    {
-        var rng = new Random(1);
-        var yin = new Yin(Sr);
-        var x = new float[yin.BufferSize];
-        for (int i = 0; i < x.Length; i++) x[i] = (float)(rng.NextDouble() * 2 - 1) * 0.2f;
-        Assert.Equal(0f, yin.Detect(x, out _));
-    }
-
     [Fact]
     public void ChoirTracksEachVoicePitch()
     {
@@ -61,33 +27,7 @@ public class ChoirTests
         var choir = RunChoir(p);
         for (int v = 0; v < p.Length; v++)
             Assert.InRange(choir.Voices[v].PitchHz, p[v] * 0.99, p[v] * 1.01);
-        Assert.Equal(4, choir.Frame.VoicedCount);
-    }
-
-    [Fact]
-    public void ClusterIsMoreTenseThanMajorChord()
-    {
-        // C major triad + octave versus a semitone cluster.
-        float major = RunChoir(new[] { 261.6, 329.6, 392.0, 523.3 }).Frame.Roughness;
-        float cluster = RunChoir(new[] { 261.6, 277.2, 293.7, 311.1 }).Frame.Roughness;
-        Assert.True(cluster > major * 2, $"cluster={cluster} major={major}");
-        Assert.InRange(cluster, 0.3f, 1f);
-    }
-
-    [Fact]
-    public void MinorSecondIsMoreTenseThanFifth()
-    {
-        float fifth = RunChoir(new[] { 261.6, 392.0 }).Frame.Roughness;
-        float second = RunChoir(new[] { 261.6, 277.2 }).Frame.Roughness;
-        Assert.True(second > fifth * 2, $"second={second} fifth={fifth}");
-    }
-
-    [Fact]
-    public void SingleVoiceHasNoRoughness()
-    {
-        var f = RunChoir(new[] { 261.6 }).Frame;
-        Assert.Equal(0f, f.Roughness);
-        Assert.Equal(1, f.VoicedCount);
+        Assert.Equal(4, choir.VoicedCount);
     }
 
     [Fact]
@@ -96,9 +36,7 @@ public class ChoirTests
         var choir = new Choir(Sr, 4);
         var buf = new float[441 * 4];
         for (int i = 0; i < 100; i++) choir.Process(buf, 441, 4);
-        Assert.Equal(0, choir.Frame.VoicedCount);
-        Assert.Equal(0f, choir.Frame.Roughness);
-        Assert.False(choir.Frame.Onset);
+        Assert.Equal(0, choir.VoicedCount);
     }
 
     [Fact]
@@ -116,13 +54,13 @@ public class ChoirTests
             }
             choir.Process(buf, 441, 2);
         }
-        Assert.Equal(2, choir.Frame.VoicedCount);
+        Assert.Equal(2, choir.VoicedCount);
     }
 
     private static float Sine(double hz, int n, float amp) => amp * (float)Math.Sin(2 * Math.PI * hz * n / Sr);
 
-    /// <summary>Runs per-voice amplitudes for <paramref name="seconds"/>, one pure sine per channel.</summary>
-    private static void RunSines(Choir choir, double[] hz, float[] amp, double seconds, int start = 0, Action<Choir> perChunk = null)
+    /// <summary>Runs one pure sine per channel with the given amplitudes.</summary>
+    private static void RunSines(Choir choir, double[] hz, float[] amp, double seconds, int start = 0)
     {
         const int chunk = 512;
         int ch = hz.Length;
@@ -134,29 +72,7 @@ public class ChoirTests
                 for (int v = 0; v < ch; v++)
                     buf[n * ch + v] = Sine(hz[v], start + o + n, amp[v]);
             choir.Process(buf, chunk, ch);
-            perChunk?.Invoke(choir);
         }
-    }
-
-    [Fact]
-    public void LoudnessIsRmsOfTheSum()
-    {
-        // Two sines of different frequency are uncorrelated: power adds, RMS = sqrt(0.1^2/2 + 0.1^2/2).
-        var choir = new Choir(Sr, 2);
-        RunSines(choir, new[] { 300.0, 900.0 }, new[] { 0.1f, 0.1f }, 1.0);
-        Assert.InRange(choir.Frame.Loudness, 0.0995f, 0.1005f);
-    }
-
-    [Fact]
-    public void SpectralFeaturesDescribeTheSum()
-    {
-        var low = new Choir(Sr, 2);
-        RunSines(low, new[] { 300.0, 300.0 }, new[] { 0.1f, 0f }, 1.0);
-        var both = new Choir(Sr, 2);
-        RunSines(both, new[] { 300.0, 3000.0 }, new[] { 0.1f, 0.1f }, 1.0);
-        Assert.InRange(low.Frame.SpectralCentroid, 250f, 350f);
-        Assert.InRange(both.Frame.SpectralCentroid, 1000f, 2000f); // between the two voices
-        Assert.True(both.Frame.SpectralSpread > low.Frame.SpectralSpread * 3);
     }
 
     [Fact]
@@ -166,9 +82,20 @@ public class ChoirTests
         choir.SetGainDb(0, -6.0206f); // half
         choir.SetGain(1, 0f);          // muted
         RunSines(choir, new[] { 300.0, 900.0 }, new[] { 0.2f, 0.2f }, 1.0);
-        Assert.InRange(choir.Voices[0].Rms, 0.0695f, 0.0720f); // 0.2 * 0.5 / sqrt2
-        Assert.Equal(0f, choir.Voices[1].Rms);
-        Assert.Equal(1, choir.Frame.VoicedCount);
+        Assert.InRange(choir.GetLevel(0), 0.0695f, 0.0720f); // 0.2 * 0.5 / sqrt2
+        Assert.Equal(0f, choir.GetLevel(1));
+        Assert.Equal(1, choir.VoicedCount); // the muted channel has no pitch
+    }
+
+    [Fact]
+    public void GainAffectsTheMix()
+    {
+        var plain = new Choir(Sr, 2);
+        RunSines(plain, new[] { 300.0, 900.0 }, new[] { 0.2f, 0.2f }, 1.0);
+        var muted = new Choir(Sr, 2);
+        muted.SetGain(1, 0f);
+        RunSines(muted, new[] { 300.0, 900.0 }, new[] { 0.2f, 0.2f }, 1.0);
+        Assert.True(muted.Mix.Rms < plain.Mix.Rms * 0.8f);
     }
 
     [Fact]
@@ -184,7 +111,7 @@ public class ChoirTests
         Assert.False(choir.IsCalibrating);
 
         RunSines(choir, hz, amp, 1.0, start: Sr);
-        for (int v = 0; v < 3; v++) Assert.InRange(choir.Voices[v].Rms, 0.095f, 0.105f);
+        for (int v = 0; v < 3; v++) Assert.InRange(choir.GetLevel(v), 0.095f, 0.105f);
     }
 
     [Fact]
@@ -209,31 +136,68 @@ public class ChoirTests
     }
 
     [Fact]
-    public void OnsetOfOneVoiceIsDetectedWhileOthersSustain()
+    public void SingleSourceSkipsPitchButKeepsSpectralFeatures()
     {
-        var choir = new Choir(Sr, 2);
-        var hz = new[] { 262.0, 392.0 };
-        // Voice 1 sustains; settle so its own flux is quiet.
-        RunSines(choir, hz, new[] { 0.2f, 0f }, 1.0);
-        bool onset = false;
-        RunSines(choir, hz, new[] { 0.2f, 0.2f }, 0.3, start: Sr, perChunk: c => onset |= c.Frame.Onset);
-        Assert.True(onset);
+        var choir = RunChoir(new[] { 261.6 });
+        Assert.Equal(ChoirMode.SingleSource, choir.Mode);
+        Assert.Equal(0, choir.VoicedCount);
+        Assert.Equal(0f, choir.Voices[0].PitchHz);
+        Assert.True(choir.Mix.Rms > 0.01f);
+        Assert.True(choir.Mix.SpectralCentroid > 100f);
+        Assert.Equal(-1, choir.Harmony.RootPitchClass);
     }
 
     [Fact]
-    public void HapticMapperPulsesOnOnsetAndSmooths()
+    public void MultiSourceExtractsSpectralFeaturesOnTheMixOnly()
     {
-        var m = new HapticMapper();
-        var quiet = m.Map(new ChoirFrame { Loudness = 0f });
-        Assert.Equal(0f, quiet.Intensity);
-        Assert.False(quiet.Pulse);
+        var choir = RunChoir(new[] { 261.6, 329.6, 392.0, 523.3 });
+        Assert.Equal(ChoirMode.MultiSource, choir.Mode);
+        Assert.True(choir.Mix.Rms > 0.01f);
+        Assert.True(choir.Mix.SpectralCentroid > 100f);
+        Assert.Equal(4, choir.VoicedCount); // pitch is still tracked per voice
+    }
 
-        var hit = m.Map(new ChoirFrame { Loudness = 0.3f, Roughness = 1f, Onset = true });
-        Assert.True(hit.Pulse);
-        Assert.InRange(hit.Intensity, 0.01f, 1f);
+    [Fact]
+    public void MixCentroidLiesBetweenTheSingleVoiceCentroids()
+    {
+        // Spectral features describe the sum, not the individual voices.
+        float low = RunChoir(new[] { 220.0 }).Mix.SpectralCentroid;
+        float high = RunChoir(new[] { 880.0 }).Mix.SpectralCentroid;
+        float mix = RunChoir(new[] { 220.0, 880.0 }).Mix.SpectralCentroid;
+        Assert.True(high > low * 1.5f, $"centroids {low} / {high}");
+        Assert.InRange(mix, low, high);
+    }
 
-        float prev = hit.Intensity;
-        var after = m.Map(new ChoirFrame { Loudness = 0f });
-        Assert.True(after.Intensity < prev && after.Intensity > 0f); // decays, doesn't drop instantly
+    [Fact]
+    public void MixMatchesSumOfVoices()
+    {
+        // Two identical in-phase voices: the mix at gain 1/sqrt(2) is sqrt(2) times one voice.
+        float one = RunChoir(new[] { 261.6 }).Mix.Rms;
+        float mix = RunChoir(new[] { 261.6, 261.6 }).Mix.Rms;
+        Assert.InRange(mix, one * (float)Math.Sqrt(2) * 0.9f, one * (float)Math.Sqrt(2) * 1.1f);
+    }
+
+    private sealed class FakeHarmony : IHarmonyAnalyzer
+    {
+        public int Calls;
+        public HarmonyFrame Analyze(VoiceFrame[] voices)
+        {
+            Calls++;
+            return new HarmonyFrame { RootPitchClass = 0, Confidence = 1f };
+        }
+    }
+
+    [Fact]
+    public void HarmonyRunsOnlyInMultiSourceMode()
+    {
+        var multi = new Choir(Sr, 2) { HarmonyAnalyzer = new FakeHarmony() };
+        var single = new Choir(Sr, 1) { HarmonyAnalyzer = new FakeHarmony() };
+        var buf2 = new float[441 * 2];
+        var buf1 = new float[441];
+        for (int i = 0; i < 20; i++) { multi.Process(buf2, 441, 2); single.Process(buf1, 441, 1); }
+        Assert.Equal(0, multi.Harmony.RootPitchClass);
+        Assert.Equal(-1, single.Harmony.RootPitchClass);
+        Assert.True(((FakeHarmony)multi.HarmonyAnalyzer).Calls > 0);
+        Assert.Equal(0, ((FakeHarmony)single.HarmonyAnalyzer).Calls);
     }
 }
