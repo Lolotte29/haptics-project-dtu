@@ -19,5 +19,5 @@ Real-time musical feature extraction in Unity for a haptics project. Target setu
 ## What it computes
 
 - **Per singer** (2+ sources): pitch only (YIN), to feed harmony analysis. Each channel also has a gain trim, a level meter and a peak/clip meter.
-- **Summed signal** (`Choir.Mix`): level (RMS), spectral centroid / spread / skewness / entropy / flux, zero-crossing rate, onsets, computed once on the sum of all channels, or on the single source when there is only one (no pitch tracking in that case).
+- **Summed signal** (`Choir.Mix`): level (RMS), spectral centroid / spread / skewness / entropy / flux, zero-crossing rate, onsets, computed once on the sum of all channels, or on the single source when there is only one. YIN pitch tracking is optional per source (HUD toggle).
 - **Next, piece by piece** ([roadmap](docs/roadmap.md)): chord recognition, key estimation, harmonic tension, then mapping to haptics. None of these exist yet.

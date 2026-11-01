@@ -3,15 +3,17 @@ using System;
 namespace Haptics.Dsp
 {
     /// <summary>
-    /// The analysis pipeline. The mode follows <c>voiceCount</c>:
-    /// 1 = <see cref="ChoirMode.SingleSource"/>, 2+ = <see cref="ChoirMode.MultiSource"/>.
+    /// The analysis pipeline. Pitch tracking (YIN) can be switched on or off for every source, whatever the
+    /// source count (<see cref="SetPitchEnabled"/>); spectral features always run on the summed signal.
     /// Input-agnostic: feed it interleaved samples from any source (voice i reads channel i).
     /// This is where ensemble-level stages (chord, key, harmonic tension) will plug in, see docs/roadmap.md.
     /// Not thread-safe: call <see cref="Process"/> from a single thread.
     /// </summary>
     public sealed class Choir
     {
-        private readonly PitchTracker[] _trackers; // null in single-source mode
+        private readonly PitchTracker[] _trackers;
+        private readonly bool[] _pitchEnabled;
+        private readonly bool[] _trackerLive;  // tracker has been fed since it was last reset
         private readonly FeatureExtractor _features;
         private readonly Action<FeatureFrame> _onFeatures;
         private readonly float[] _one = new float[1];
@@ -22,10 +24,9 @@ namespace Haptics.Dsp
         private int _voiceCount;
         private bool _featuresUpdated;
 
-        /// <summary>Per-singer pitch (multi-source mode only; all default in single-source mode).</summary>
+        /// <summary>Per-singer pitch; stays default (unvoiced) for sources whose pitch tracking is off.</summary>
         public VoiceFrame[] Voices { get; }
         public int VoiceCount => _voiceCount;
-        public ChoirMode Mode { get; }
 
         /// <summary>
         /// Spectral features (level, centroid, ...) of the summed signal, or of the single channel when there is only one.
@@ -33,7 +34,10 @@ namespace Haptics.Dsp
         /// </summary>
         public FeatureFrame Mix { get; private set; }
 
-        /// <summary>Optional chord recognition, used in multi-source mode only.</summary>
+        /// <summary>
+        /// Optional chord recognition. It sees <see cref="Voices"/>, where sources with pitch tracking off
+        /// are always unvoiced, so only the sources chosen with <see cref="SetPitchEnabled"/> take part.
+        /// </summary>
         public IHarmonyAnalyzer HarmonyAnalyzer { get; set; }
 
         /// <summary>Latest chord analysis; <see cref="HarmonyFrame.RootPitchClass"/> is -1 when none is available.</summary>
@@ -61,23 +65,30 @@ namespace Haptics.Dsp
             if (voiceCount < 1) throw new ArgumentOutOfRangeException(nameof(voiceCount));
             _voiceCount = voiceCount;
             Voices = new VoiceFrame[voiceCount];
-            Mode = voiceCount == 1 ? ChoirMode.SingleSource : ChoirMode.MultiSource;
             MixGain = 1f / (float)Math.Sqrt(voiceCount);
             _gains = new float[voiceCount];
             _peaks = new float[voiceCount];
             _meanSq = new float[voiceCount];
             _levelCoef = 1f / (0.05f * sampleRate); // ~50 ms smoothing
-            for (int i = 0; i < voiceCount; i++) _gains[i] = 1f;
+            _pitchEnabled = new bool[voiceCount];
+            _trackerLive = new bool[voiceCount];
+            for (int i = 0; i < voiceCount; i++) { _gains[i] = 1f; _pitchEnabled[i] = true; }
 
             _features = new FeatureExtractor(sampleRate, 1024, hopSize);
             _onFeatures = f => { Mix = f; _featuresUpdated = true; }; // allocated once
 
-            if (Mode == ChoirMode.MultiSource)
-            {
-                _trackers = new PitchTracker[voiceCount];
-                for (int i = 0; i < voiceCount; i++) _trackers[i] = new PitchTracker(sampleRate, hopSize);
-            }
+            _trackers = new PitchTracker[voiceCount];
+            for (int i = 0; i < voiceCount; i++) _trackers[i] = new PitchTracker(sampleRate, hopSize);
         }
+
+        /// <summary>Whether YIN runs on source <paramref name="voice"/> (default true for every source).</summary>
+        public bool GetPitchEnabled(int voice) => _pitchEnabled[voice];
+
+        /// <summary>
+        /// Switches pitch tracking of one source on or off. A source that is off costs no YIN time, reports no pitch
+        /// and is ignored by harmony analysis. Its gain, meters and share of the mix are unaffected.
+        /// </summary>
+        public void SetPitchEnabled(int voice, bool enabled) => _pitchEnabled[voice] = enabled;
 
         /// <summary>Linear gain (mic trim) applied to channel <paramref name="voice"/> before any analysis.</summary>
         public float GetGain(int voice) => _gains[voice];
@@ -113,20 +124,11 @@ namespace Haptics.Dsp
                     float s = raw * _gains[v];
                     _meanSq[v] += (s * s - _meanSq[v]) * _levelCoef;
                     sum += s;
-                    if (_trackers != null && _trackers[v].Process(s))
-                    {
-                        Voices[v] = _trackers[v].Latest;
-                        voicesUpdated = true;
-                    }
+                    voicesUpdated |= TrackPitch(v, s);
                 }
                 // Channels without input are silent voices: keep their trackers' windows moving.
-                if (_trackers != null)
-                    for (int v = used; v < _voiceCount; v++)
-                        if (_trackers[v].Process(0f))
-                        {
-                            Voices[v] = _trackers[v].Latest;
-                            voicesUpdated = true;
-                        }
+                for (int v = used; v < _voiceCount; v++)
+                    voicesUpdated |= TrackPitch(v, 0f);
 
                 _one[0] = sum * MixGain;
                 _features.Process(_one, 0, 1, _onFeatures);
@@ -135,6 +137,22 @@ namespace Haptics.Dsp
             if (voicesUpdated && HarmonyAnalyzer != null)
                 Harmony = HarmonyAnalyzer.Analyze(Voices);
             return voicesUpdated || _featuresUpdated;
+        }
+
+        private bool TrackPitch(int v, float sample)
+        {
+            if (!_pitchEnabled[v])
+            {
+                if (!_trackerLive[v]) return false;
+                _trackers[v].Reset(); // switched off: forget the window, report no pitch
+                _trackerLive[v] = false;
+                Voices[v] = default;
+                return true;
+            }
+            _trackerLive[v] = true;
+            if (!_trackers[v].Process(sample)) return false;
+            Voices[v] = _trackers[v].Latest;
+            return true;
         }
     }
 }

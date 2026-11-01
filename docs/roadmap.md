@@ -4,7 +4,7 @@ Do one step at a time. Each step is one small script plus a test in `dsp/Haptics
 
 ## 0. Done
 - [x] Spectral features (RMS, centroid, spread, skewness, entropy, ZCR, flux, onset), YIN pitch per voice, choir wiring (features on the mix only).
-- [x] Single-source mode (features only) and multi-source mode (YIN per voice only + features of the summed mix), `IHarmonyAnalyzer` plug-in point.
+- [x] YIN switchable per source (any source count) + features of the summed mix, `IHarmonyAnalyzer` plug-in point (it only sees sources with YIN on).
 
 ## 1. Verify what exists (do first)
 - [ ] Open `unity/` in Unity, fix compile errors ([unity-setup.md](unity-setup.md)).

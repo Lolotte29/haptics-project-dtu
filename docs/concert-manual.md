@@ -36,7 +36,7 @@ If the hardware gains already bring the singers to similar levels, only small in
 
 ## Reading the voice rows
 
-Each row of the panel at the top left has the form `V1 C4  261.6 Hz`: voice number, note name, pitch in Hz. When no pitch is detected, the note shows `--` and the pitch reads `0.0 Hz` (for example `V2 --    0.0 Hz`). This is the normal state when a singer is silent, and the unusual one only when that singer is singing.
+Each row of the panel at the top left has the form `V1 C4  261.6 Hz`: voice number, note name, pitch in Hz. When no pitch is detected, the note shows `--` and the pitch reads `0.0 Hz` (for example `V2 --    0.0 Hz`). This is the normal state when a singer is silent, and the unusual one only when that singer is singing. The `YIN` checkbox at the start of a row switches pitch tracking for that source on or off; with it off the row always reads `--`, but the level meter and the gain still work.
 
 ## After the performance
 

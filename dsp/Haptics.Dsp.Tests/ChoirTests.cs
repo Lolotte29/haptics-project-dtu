@@ -108,22 +108,56 @@ public class ChoirTests
     }
 
     [Fact]
-    public void SingleSourceSkipsPitchButKeepsSpectralFeatures()
+    public void SingleSourceCanTrackPitchAndKeepsSpectralFeatures()
     {
         var choir = RunChoir(new[] { 261.6 });
-        Assert.Equal(ChoirMode.SingleSource, choir.Mode);
-        Assert.Equal(0, choir.VoicedCount);
-        Assert.Equal(0f, choir.Voices[0].PitchHz);
+        Assert.Equal(1, choir.VoicedCount);
+        Assert.InRange(choir.Voices[0].PitchHz, 261.6 * 0.99, 261.6 * 1.01);
         Assert.True(choir.Mix.Rms > 0.01f);
         Assert.True(choir.Mix.SpectralCentroid > 100f);
-        Assert.Equal(-1, choir.Harmony.RootPitchClass);
+    }
+
+    [Fact]
+    public void PitchCanBeSwitchedOffPerSource()
+    {
+        var choir = new Choir(Sr, 2);
+        choir.SetPitchEnabled(1, false);
+        RunSines(choir, new[] { 300.0, 900.0 }, new[] { 0.2f, 0.2f }, 1.0);
+        Assert.True(choir.Voices[0].Voiced);
+        Assert.False(choir.Voices[1].Voiced);
+        Assert.Equal(1, choir.VoicedCount);
+        Assert.True(choir.GetLevel(1) > 0.1f);   // still metered
+        Assert.InRange(choir.Mix.Rms, 0.13f, 0.15f); // still in the mix
+    }
+
+    [Fact]
+    public void SingleSourceWithPitchOffReportsNoPitch()
+    {
+        var choir = new Choir(Sr, 1);
+        choir.SetPitchEnabled(0, false);
+        RunSines(choir, new[] { 262.0 }, new[] { 0.3f }, 1.0);
+        Assert.Equal(0, choir.VoicedCount);
+        Assert.True(choir.Mix.Rms > 0.01f);
+    }
+
+    [Fact]
+    public void SwitchingPitchOffClearsAndOnResumes()
+    {
+        var choir = new Choir(Sr, 1);
+        RunSines(choir, new[] { 262.0 }, new[] { 0.3f }, 0.5);
+        Assert.Equal(1, choir.VoicedCount);
+        choir.SetPitchEnabled(0, false);
+        RunSines(choir, new[] { 262.0 }, new[] { 0.3f }, 0.1);
+        Assert.Equal(0, choir.VoicedCount);
+        choir.SetPitchEnabled(0, true);
+        RunSines(choir, new[] { 262.0 }, new[] { 0.3f }, 0.5);
+        Assert.Equal(1, choir.VoicedCount);
     }
 
     [Fact]
     public void MultiSourceExtractsSpectralFeaturesOnTheMixOnly()
     {
         var choir = RunChoir(new[] { 261.6, 329.6, 392.0, 523.3 });
-        Assert.Equal(ChoirMode.MultiSource, choir.Mode);
         Assert.True(choir.Mix.Rms > 0.01f);
         Assert.True(choir.Mix.SpectralCentroid > 100f);
         Assert.Equal(4, choir.VoicedCount); // pitch is still tracked per voice
@@ -159,17 +193,39 @@ public class ChoirTests
         }
     }
 
-    [Fact]
-    public void HarmonyRunsOnlyInMultiSourceMode()
+    private sealed class CountingHarmony : IHarmonyAnalyzer
     {
-        var multi = new Choir(Sr, 2) { HarmonyAnalyzer = new FakeHarmony() };
-        var single = new Choir(Sr, 1) { HarmonyAnalyzer = new FakeHarmony() };
-        var buf2 = new float[441 * 2];
-        var buf1 = new float[441];
-        for (int i = 0; i < 20; i++) { multi.Process(buf2, 441, 2); single.Process(buf1, 441, 1); }
-        Assert.Equal(0, multi.Harmony.RootPitchClass);
-        Assert.Equal(-1, single.Harmony.RootPitchClass);
-        Assert.True(((FakeHarmony)multi.HarmonyAnalyzer).Calls > 0);
-        Assert.Equal(0, ((FakeHarmony)single.HarmonyAnalyzer).Calls);
+        public int Calls, LastVoiced;
+        public HarmonyFrame Analyze(VoiceFrame[] voices)
+        {
+            Calls++;
+            LastVoiced = 0;
+            foreach (var v in voices) if (v.Voiced) LastVoiced++;
+            return new HarmonyFrame { RootPitchClass = 0, Confidence = 1f };
+        }
+    }
+
+    [Fact]
+    public void HarmonySeesOnlySourcesWithPitchOn()
+    {
+        var harmony = new CountingHarmony();
+        var choir = new Choir(Sr, 3) { HarmonyAnalyzer = harmony };
+        choir.SetPitchEnabled(2, false);
+        RunSines(choir, new[] { 262.0, 330.0, 392.0 }, new[] { 0.3f, 0.3f, 0.3f }, 1.0);
+        Assert.True(harmony.Calls > 0);
+        Assert.Equal(2, harmony.LastVoiced);
+    }
+
+    [Fact]
+    public void HarmonyDoesNotRunWhenAllPitchIsOff()
+    {
+        var harmony = new CountingHarmony();
+        var choir = new Choir(Sr, 2) { HarmonyAnalyzer = harmony };
+        choir.SetPitchEnabled(0, false);
+        choir.SetPitchEnabled(1, false);
+        var buf = new float[441 * 2];
+        for (int i = 0; i < 20; i++) choir.Process(buf, 441, 2);
+        Assert.Equal(0, harmony.Calls);
+        Assert.Equal(-1, choir.Harmony.RootPitchClass);
     }
 }

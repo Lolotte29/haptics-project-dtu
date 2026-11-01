@@ -16,7 +16,7 @@ Then set **Edit > Project Settings > Audio > DSP Buffer Size = Best latency** (c
 
 ## 2. Scene
 
-Open `Assets/main.unity`. It already has `Choir` (**ChoirHost**, Voice Count 4; set it to 1 for single-source mode, which skips pitch tracking) and `Input` (**AudioSource** + **AudioSourceInput**, Host assigned, *Use Microphone* ticked). Nothing to wire.
+Open `Assets/main.unity`. It already has `Choir` (**ChoirHost**, Voice Count 4; the *Pitch Enabled* list switches YIN on or off per source, also in the HUD) and `Input` (**AudioSource** + **AudioSourceInput**, Host assigned, *Use Microphone* ticked). Nothing to wire.
 
 Fix any compile errors in the Console first (the scripts have never been compiled).
 

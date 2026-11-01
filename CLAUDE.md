@@ -26,19 +26,19 @@ audio in (channel i = singer i)
   -> per-channel gain trim, peak/level meters (Choir.SetGainDb; adjusted by hand in the HUD before the concert)
   -> PitchTracker x N   : YIN pitch per singer, nothing else                    -> VoiceFrame (feeds harmony)
   -> sum of channels    : level + spectral features (FeatureExtractor), once    -> Choir.Mix
-        (exists up to here; with one source: features on that channel, no YIN)
+        (exists up to here; YIN can be switched on/off per source, with any source count)
   -> chord recognition  : pitch classes of all voices -> chord                   (planned)
   -> key estimation     : running key from chord/pitch history                    (planned)
   -> harmonic tension   : chord in key context -> tension 0..1                    (planned)
   -> haptic mapping     : tension + loudness -> one intensity + pulse -> Bluetooth (planned, last)
 ```
 
-`Choir` wraps the voice stage: `Choir.Process(interleavedSamples, frames, channels)` fills `Choir.Voices`. Mode follows `voiceCount`: **1 source** = spectral features of that channel only (no YIN, no harmony); **2+ sources** = per-voice YIN only (`Choir.Voices`, pitch is the only per-singer analysis), optional `IHarmonyAnalyzer` (chord recognition, not implemented yet), plus spectral features of the summed signal (`Choir.Mix`, gain 1/sqrt(N)). Spectral features are deliberately never computed per singer. Planned stages go in `Dsp/Choir/`. Order and checklist: docs/roadmap.md.
+`Choir` wraps the voice stage: `Choir.Process(interleavedSamples, frames, channels)` fills `Choir.Voices`. There is no mode: YIN is switchable **per source** (`Choir.SetPitchEnabled(i, bool)`, default on, also for a single source; HUD toggle and `ChoirHost.pitchEnabled`). Sources with YIN off cost no YIN time and stay unvoiced in `Choir.Voices` (pitch is the only per-singer analysis), so the optional `IHarmonyAnalyzer` (chord recognition, not implemented yet) only ever sees the sources the user chose. Spectral features of the summed signal (`Choir.Mix`, gain 1/sqrt(N); one source = that channel) always run. Spectral features are deliberately never computed per singer. Planned stages go in `Dsp/Choir/`. Order and checklist: docs/roadmap.md.
 
 - `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
 - `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD) and `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly).
 - `docs/`: `unity-setup.md`, `mic-input.md` (input options for the supervisor), `concert-manual.md` (sound check and gains), `testing-features.md` (what to expect per feature).
-- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (27 tests).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (35 tests).
 
 ## Honest state
 

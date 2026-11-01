@@ -18,6 +18,8 @@ public class ChoirHost : MonoBehaviour
 
     [Tooltip("Starting trim per channel in dB (a value saved from the HUD overrides it). Extra entries are ignored.")]
     [SerializeField] private float[] gainDb = new float[4];
+    [Tooltip("Run pitch tracking (YIN) on each source at start; can be toggled in the HUD. Missing entries count as on. Harmony will only use sources that are on.")]
+    [SerializeField] private bool[] pitchEnabled = { true, true, true, true };
     [Tooltip("Channel RMS level that fills the HUD level bar. Typical sung level is about half of it.")]
     [SerializeField] private float meterFullScaleRms = 0.2f;
 
@@ -28,7 +30,7 @@ public class ChoirHost : MonoBehaviour
     /// <summary>Spectral features of the summed signal (or of the single source). Default frame before Awake.</summary>
     public FeatureFrame Mix => _choir != null ? _choir.Mix : default;
 
-    /// <summary>Plug in chord recognition before Awake finishes or any time later; used in multi-source mode only.</summary>
+    /// <summary>Plug in chord recognition before Awake finishes or any time later; it sees only the sources whose YIN is on.</summary>
     public IHarmonyAnalyzer HarmonyAnalyzer
     {
         get => _choir?.HarmonyAnalyzer;
@@ -39,6 +41,7 @@ public class ChoirHost : MonoBehaviour
     {
         _choir = new Choir(AudioSettings.outputSampleRate, voiceCount);
         ApplyGains();
+        ApplyPitchEnabled();
     }
 
     private void ApplyGains()
@@ -48,6 +51,12 @@ public class ChoirHost : MonoBehaviour
             float db = i < gainDb.Length ? gainDb[i] : 0f;
             _choir.SetGainDb(i, PlayerPrefs.GetFloat(GainKey + i, db));
         }
+    }
+
+    private void ApplyPitchEnabled()
+    {
+        for (int i = 0; i < voiceCount; i++)
+            _choir.SetPitchEnabled(i, i >= pitchEnabled.Length || pitchEnabled[i]);
     }
 
     private void SaveGains()
@@ -65,9 +74,18 @@ public class ChoirHost : MonoBehaviour
         var old = _choir;
         _choir = new Choir(sampleRate, voiceCount);
         if (old != null)
-            for (int i = 0; i < voiceCount; i++) _choir.SetGain(i, old.GetGain(i)); // keep the trim set in the HUD
+        {
+            for (int i = 0; i < voiceCount; i++)
+            {
+                _choir.SetGain(i, old.GetGain(i)); // keep the trim set in the HUD
+                _choir.SetPitchEnabled(i, old.GetPitchEnabled(i));
+            }
+        }
         else
+        {
             ApplyGains();
+            ApplyPitchEnabled();
+        }
     }
 
     /// <summary>Called by an input component: from the audio thread (clip playback) or the main thread (microphone).</summary>
@@ -85,7 +103,7 @@ public class ChoirHost : MonoBehaviour
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
         var voices = _choir.Voices;
-        GUILayout.BeginArea(new Rect(10, 10, 520, 120 + 26 * voices.Length), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(10, 10, 580, 120 + 26 * voices.Length), GUI.skin.box);
         for (int i = 0; i < voices.Length; i++)
         {
             var v = voices[i];
@@ -93,6 +111,8 @@ public class ChoirHost : MonoBehaviour
             bool clip = peak >= 0.99f;
             string note = v.Voiced ? NoteName(v.PitchHz) : "--";
             GUILayout.BeginHorizontal();
+            bool pitchOn = GUILayout.Toggle(_choir.GetPitchEnabled(i), "YIN", GUILayout.Width(50));
+            if (pitchOn != _choir.GetPitchEnabled(i)) _choir.SetPitchEnabled(i, pitchOn);
             GUILayout.Label($"V{i + 1} {note,-4} {v.PitchHz,6:0.0} Hz", GUILayout.Width(140));
             DrawBar(_choir.GetLevel(i) / meterFullScaleRms, clip ? Color.red : Color.green, 120f);
             GUILayout.Label(clip ? "CLIP" : $"{peak:0.00}", GUILayout.Width(40));
@@ -108,8 +128,8 @@ public class ChoirHost : MonoBehaviour
             for (int i = 0; i < _choir.VoiceCount; i++) _choir.SetGainDb(i, 0f);
         GUILayout.EndHorizontal();
 
-        GUILayout.Label($"Voiced {_choir.VoicedCount}/{voices.Length}   Mode {_choir.Mode}");
-        GUILayout.Label($"{(_choir.Mode == ChoirMode.SingleSource ? "Source" : "Mix")}: centroid {_choir.Mix.SpectralCentroid:0} Hz   level {_choir.Mix.Rms:0.000}");
+        GUILayout.Label($"Voiced {_choir.VoicedCount}/{voices.Length}");
+        GUILayout.Label($"{(voices.Length == 1 ? "Source" : "Mix")}: centroid {_choir.Mix.SpectralCentroid:0} Hz   level {_choir.Mix.Rms:0.000}");
         var h = _choir.Harmony;
         if (h.RootPitchClass >= 0)
             GUILayout.Label($"Chord root {Names[h.RootPitchClass]} ({h.Confidence:0.00})");

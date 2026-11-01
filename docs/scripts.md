@@ -8,13 +8,12 @@ audio in -> Voice/ (per singer: pitch; features on the mix) -> Choir/ (ensemble:
               ^ Core/ primitives (FFT, YIN)
 ```
 
-`Choir` picks its mode from the number of sources (`voiceCount`):
+YIN is switched on or off for every source separately (`Choir.SetPitchEnabled`, default on), whatever the number of sources:
 
 ```
-1 source   : channel 0 -> FeatureExtractor -> Mix                              (features only, no pitch)
-
-2+ sources : channel i -> PitchTracker i (YIN)  -> Voices[i] -> IHarmonyAnalyzer -> Harmony
-             sum of all channels x 1/sqrt(N) -> FeatureExtractor               -> Mix
+channel i (YIN on)  -> PitchTracker i -> Voices[i] -+-> IHarmonyAnalyzer -> Harmony   (only sources with YIN on)
+channel i (YIN off) -> Voices[i] stays unvoiced ----+
+sum of all channels x 1/sqrt(N) -> FeatureExtractor                      -> Mix       (always)
 ```
 
 Read the results from `Choir`: `Voices` (per singer), `Mix` (features of the summed signal, or of the single source), `Harmony` (chord; root -1 until an analyzer is plugged in via `Choir.HarmonyAnalyzer`).
@@ -32,7 +31,6 @@ Status: **done** = implemented and unit-tested on synthetic signals; **untested*
 | `Voice/` | `VoiceFrame.cs` | What is known about one singer: pitch and confidence (data) | done |
 | `Voice/` | `PitchTracker.cs` | Per-singer YIN pitch with a silence gate -> `VoiceFrame` | done |
 | `Choir/` | `Choir.cs` | Runs N `PitchTracker` (N >= 2) and one `FeatureExtractor` on the sum (or the single channel). Fills `Voices` (pitch), `Mix` (`FeatureFrame`), `Harmony` | done |
-| `Choir/` | `ChoirMode.cs` | `SingleSource` (1 voice) or `MultiSource` (2+), chosen from `voiceCount` | done |
 | `Choir/` | `HarmonyFrame.cs` | Chord result (root pitch class, confidence); later key and tension | done (data) |
 | `Choir/` | `IHarmonyAnalyzer.cs` | Plug-in point for chord recognition; set as `Choir.HarmonyAnalyzer`. No implementation yet | interface only |
 

@@ -28,6 +28,14 @@ namespace Haptics.Dsp
             _linear = new float[_yin.BufferSize];
         }
 
+        /// <summary>Clears the analysis window and <see cref="Latest"/>, e.g. after the source was switched off.</summary>
+        public void Reset()
+        {
+            Array.Clear(_ring, 0, _ring.Length);
+            _write = _sinceHop = _filled = 0;
+            Latest = default;
+        }
+
         /// <summary>Feeds one sample. Returns true when <see cref="Latest"/> was refreshed (every hop).</summary>
         public bool Process(float sample)
         {
