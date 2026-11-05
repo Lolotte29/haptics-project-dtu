@@ -2,6 +2,14 @@
 
 Real-time musical feature extraction in Unity for a haptics project. Target setup: a 4-singer choir, one microphone each (VB-Cable for now). Later, a Bluetooth/ESP haptic bracelet worn by audience members will play one shared signal derived from the singers. Agents: read [CLAUDE.md](CLAUDE.md).
 
+## Quick start
+
+1. Install **Git** and **Unity Hub**, then clone this repository.
+2. In Unity Hub, add the **`unity/`** folder as a project and open it with **Unity 6000.6.0f1** (Hub offers to install it).
+3. Open `Assets/main.unity` and press Play. It uses the computer's default microphone; the analysis shows on screen, top left.
+
+Details (audio input options, VB-Cable, settings): [docs/unity-setup.md](docs/unity-setup.md).
+
 ## Layout
 
 | Path | Purpose |
