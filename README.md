@@ -22,6 +22,7 @@ Details (audio input options, VB-Cable, settings): [docs/unity-setup.md](docs/un
 | `docs/roadmap.md` | What to implement next, in order. |
 | `docs/mic-input.md` | Microphone connection options and open questions (for the supervisor). |
 | `docs/concert-manual.md` | Sound check: gains, what to watch live. |
+| `docs/esp-wifi.md` | Wi-Fi/UDP link to the ESP bracelets: packet format, setup, test without an ESP. |
 | `docs/testing-features.md` | What each displayed feature should do when testing. |
 
 ## What it computes

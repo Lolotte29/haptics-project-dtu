@@ -37,8 +37,8 @@ audio in (channel i = singer i)
 
 - `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
 - `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD) and `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly).
-- `docs/`: `unity-setup.md`, `mic-input.md` (input options for the supervisor), `concert-manual.md` (sound check and gains), `testing-features.md` (what to expect per feature).
-- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (35 tests).
+- `docs/`: `esp-wifi.md` (Wi-Fi link to the bracelets; Wi-Fi replaces Bluetooth), `unity-setup.md`, `mic-input.md` (input options for the supervisor), `concert-manual.md` (sound check and gains), `testing-features.md` (what to expect per feature).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (52 tests).
 
 ## Honest state
 

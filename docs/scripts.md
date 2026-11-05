@@ -32,6 +32,7 @@ Status: **done** = implemented and unit-tested on synthetic signals; **untested*
 | `Voice/` | `PitchTracker.cs` | Per-singer YIN pitch with a silence gate -> `VoiceFrame` | done |
 | `Choir/` | `Choir.cs` | Runs N `PitchTracker` (N >= 2) and one `FeatureExtractor` on the sum (or the single channel). Fills `Voices` (pitch), `Mix` (`FeatureFrame`), `Harmony` | done |
 | `Choir/` | `HarmonyFrame.cs` | Chord result (root pitch class, confidence); later key and tension | done (data) |
+| `Haptic/` | `HapticPacket.cs` | 5-byte UDP packet (sequence + envelope) sent to the ESPs, see [esp-wifi.md](esp-wifi.md) | done |
 | `Choir/` | `IHarmonyAnalyzer.cs` | Plug-in point for chord recognition; set as `Choir.HarmonyAnalyzer`. No implementation yet | interface only |
 
 ## Exists: `unity/Assets/Scripts/Unity/`
@@ -40,6 +41,7 @@ Status: **done** = implemented and unit-tested on synthetic signals; **untested*
 |--------|--------------|--------|
 | `ChoirHost.cs` | Owns `Choir` (`voiceCount` field sets the mode), exposes `HarmonyAnalyzer`, debug display of pitch/note per voice, mode, mix centroid/level, chord root | untested in Unity |
 | `FeatureVisualizer.cs` | Optional; add to the `Choir` GameObject. Scrolling plots: pitch with one line per singer, then RMS, centroid, spread, skewness, entropy, ZCR, flux + onsets of the mix | untested in Unity |
+| `UdpHapticSender.cs` | Own thread sends `ChoirHost.Envelope` over UDP to a list of ESP IPs (default 200 pkt/s), status line in the Game view | untested in Unity; packet format unit-tested |
 | `AudioSourceInput.cs` | Feeds a clip (audio thread) or a capture device read directly from the mic buffer (main thread, VB-Cable) into `ChoirHost` | untested; reads one device's channels only |
 
 Tests: `dsp/Haptics.Dsp.Tests/` (`cd dsp && dotnet test Haptics.Dsp.Tests`), one file per tested area: `YinTests`, `FeatureExtractorTests`, `PitchRobustnessTests`, `ChoirTests` (modes, mix, harmony hook), with shared synthetic signals in `TestSignals`.

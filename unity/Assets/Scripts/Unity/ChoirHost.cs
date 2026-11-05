@@ -36,6 +36,9 @@ public class ChoirHost : MonoBehaviour
     /// <summary>Spectral features of the summed signal (or of the single source). Default frame before Awake.</summary>
     public FeatureFrame Mix => _choir != null ? _choir.Mix : default;
 
+    /// <summary>Live amplitude envelope of the mix, 0..1. Safe to read from any thread (no Unity API involved).</summary>
+    public float Envelope => _choir != null ? _choir.EnvelopeLive : 0f;
+
     /// <summary>Plug in chord recognition before Awake finishes or any time later; it sees only the sources whose YIN is on.</summary>
     public IHarmonyAnalyzer HarmonyAnalyzer
     {

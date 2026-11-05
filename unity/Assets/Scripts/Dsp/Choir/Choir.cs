@@ -60,6 +60,13 @@ namespace Haptics.Dsp
             set => _features.Envelope.ReleaseMs = value;
         }
 
+        /// <summary>
+        /// Current value of the per-sample amplitude envelope of the mix (0..1). Unlike <see cref="Mix"/> it moves
+        /// with every processed buffer, so another thread may poll it faster than the analysis frame rate (a single
+        /// float read: possibly one buffer old, never torn).
+        /// </summary>
+        public float EnvelopeLive => _features.Envelope.Value;
+
         /// <summary>Per-sample decay of the peak meters (about 0.5 s at 44.1 kHz).</summary>
         public float PeakDecay = 0.99995f;
 
