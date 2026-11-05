@@ -31,6 +31,9 @@ namespace Haptics.Dsp
         /// <summary>Minimum frames between two onsets.</summary>
         public int RefractoryFrames = 4;
 
+        /// <summary>Amplitude envelope follower, updated for every sample. Tune attack/release here.</summary>
+        public EnvelopeFollower Envelope { get; }
+
         public int SampleRate { get; }
         public int HopSize => _hopSize;
 
@@ -38,6 +41,7 @@ namespace Haptics.Dsp
         {
             if (hopSize <= 0 || hopSize > frameSize) throw new ArgumentException("Invalid hop size.", nameof(hopSize));
             SampleRate = sampleRate;
+            Envelope = new EnvelopeFollower(sampleRate);
             _frameSize = frameSize;
             _hopSize = hopSize;
             _binHz = (float)sampleRate / frameSize;
@@ -58,7 +62,9 @@ namespace Haptics.Dsp
             int frames = 0;
             for (int i = 0; i < count; i++)
             {
-                _ring[_writePos] = samples[offset + i];
+                float sample = samples[offset + i];
+                Envelope.Process(sample);
+                _ring[_writePos] = sample;
                 _writePos = (_writePos + 1) % _frameSize;
                 if (_filled < _frameSize) _filled++;
 
@@ -133,6 +139,7 @@ namespace Haptics.Dsp
             return new FeatureFrame
             {
                 Rms = (float)Math.Sqrt(sumSq / _frameSize),
+                Envelope = Envelope.Value,
                 SpectralCentroid = (float)centroid,
                 SpectralSpread = (float)spread,
                 SpectralSkewness = spread > 1e-9 ? (float)(m3 / (spread * spread * spread)) : 0f,

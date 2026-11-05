@@ -46,6 +46,20 @@ namespace Haptics.Dsp
         /// <summary>Gain applied to the sum of channels. Default 1/sqrt(N) keeps power constant for uncorrelated voices.</summary>
         public float MixGain { get; set; }
 
+        /// <summary>Attack time constant of <see cref="FeatureFrame.Envelope"/> in ms. Safe to change while running.</summary>
+        public float EnvelopeAttackMs
+        {
+            get => _features.Envelope.AttackMs;
+            set => _features.Envelope.AttackMs = value;
+        }
+
+        /// <summary>Release time constant of <see cref="FeatureFrame.Envelope"/> in ms. Safe to change while running.</summary>
+        public float EnvelopeReleaseMs
+        {
+            get => _features.Envelope.ReleaseMs;
+            set => _features.Envelope.ReleaseMs = value;
+        }
+
         /// <summary>Per-sample decay of the peak meters (about 0.5 s at 44.1 kHz).</summary>
         public float PeakDecay = 0.99995f;
 

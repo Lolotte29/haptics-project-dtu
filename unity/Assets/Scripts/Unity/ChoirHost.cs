@@ -23,6 +23,12 @@ public class ChoirHost : MonoBehaviour
     [Tooltip("Channel RMS level that fills the HUD level bar. Typical sung level is about half of it.")]
     [SerializeField] private float meterFullScaleRms = 0.2f;
 
+    [Header("Amplitude envelope (FeatureFrame.Envelope)")]
+    [Tooltip("How fast the envelope rises, in ms (time constant). Small = punchy. 0 = instant.")]
+    [Min(0f)] [SerializeField] private float envelopeAttackMs = 5f;
+    [Tooltip("How fast the envelope falls, in ms (time constant). Large = smooth, no flutter. 0 = instant.")]
+    [Min(0f)] [SerializeField] private float envelopeReleaseMs = 100f;
+
     private Choir _choir;
 
     public VoiceFrame[] Voices => _choir?.Voices;
@@ -42,6 +48,17 @@ public class ChoirHost : MonoBehaviour
         _choir = new Choir(AudioSettings.outputSampleRate, voiceCount);
         ApplyGains();
         ApplyPitchEnabled();
+        ApplyEnvelope();
+    }
+
+    // Editing the fields in the Inspector while playing takes effect immediately.
+    private void OnValidate() => ApplyEnvelope();
+
+    private void ApplyEnvelope()
+    {
+        if (_choir == null) return;
+        _choir.EnvelopeAttackMs = envelopeAttackMs;
+        _choir.EnvelopeReleaseMs = envelopeReleaseMs;
     }
 
     private void ApplyGains()
@@ -86,6 +103,7 @@ public class ChoirHost : MonoBehaviour
             ApplyGains();
             ApplyPitchEnabled();
         }
+        ApplyEnvelope();
     }
 
     /// <summary>Called by an input component: from the audio thread (clip playback) or the main thread (microphone).</summary>

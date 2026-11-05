@@ -6,6 +6,10 @@ namespace Haptics.Dsp
         /// <summary>Root-mean-square level of the frame (0..1 for full-scale input).</summary>
         public float Rms;
 
+        /// <summary>Amplitude envelope (per-sample follower with attack/release) at the end of the frame, 0..1.
+        /// Unlike <see cref="Rms"/> it is not a block average: it rises fast and falls slowly.</summary>
+        public float Envelope;
+
         /// <summary>Spectral centroid in Hz (brightness).</summary>
         public float SpectralCentroid;
 
