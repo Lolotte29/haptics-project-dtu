@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 476623316}
   - component: {fileID: 476623315}
   - component: {fileID: 476623317}
+  - component: {fileID: 476623318}
   m_Layer: 0
   m_Name: Choir
   m_TagString: Untagged
@@ -152,6 +153,15 @@ MonoBehaviour:
   voiceCount: 1
   showHud: 1
   hudScale: 0
+  gainDb:
+  - 0
+  - 0
+  - 0
+  - 0
+  pitchEnabled: 01010101y
+  meterFullScaleRms: 0.2
+  envelopeAttackMs: 5
+  envelopeReleaseMs: 100
 --- !u!4 &476623316
 Transform:
   m_ObjectHideFlags: 0
@@ -184,6 +194,25 @@ MonoBehaviour:
   panelHeight: 56
   uiScale: 0
   leftOffset: 380
+--- !u!114 &476623318
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 476623314}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aeb811ad301ccaa4397e74be47ceddbc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UdpHapticSender
+  host: {fileID: 0}
+  targets:
+  - ip: 127.0.0.1
+    port: 4210
+  sendRateHz: 200
+  outputGain: 1
+  showStatus: 1
 --- !u!1 &1040955603
 GameObject:
   m_ObjectHideFlags: 0
