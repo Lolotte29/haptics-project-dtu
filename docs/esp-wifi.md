@@ -1,20 +1,20 @@
 # ESP Wi-Fi link (for the ESP side)
 
-Unity sends the live amplitude envelope of the choir to every bracelet over **UDP**. Every ESP receives the same packets. There is no reply and no connection: just listen on a port and use the newest value.
+Unity sends the live amplitude envelope (only that for now) of the choir to every bracelet over **UDP**. Every ESP receives the same packets. There is no reply and no connection: just listen on a port and use the newest value.
 
 ## What the ESP must do
 
-1. Join the Wi-Fi network the Unity computer is on (same network, same subnet).
-2. Have a **fixed IP** (DHCP reservation in the router, or a static IP) and give it to whoever runs Unity.
-3. Listen on a UDP port (default **4210**, any port works if Unity uses the same one).
+1. Join the Wi-Fi network the Unity computer is on.
+2. Get each ESP's IP address and write them in the Unity interface.
+3. Listen on a UDP port (we choose **4210** by default).
 4. For each packet: check it, take the newest envelope, set the vibration strength.
-5. **Safety timeout:** if no valid packet arrives for about 200 ms, set the vibration to 0.
+5. **Safety timeout:** if no valid packet arrives for about (for instance) 200 ms, set the vibration to 0, so if no data arrives the bracelet does not keep vibrating (that's just a suggestion)
 
-Tips for low latency: call `WiFi.setSleep(false)` (the default power save adds 100 ms or more), never block the loop (poll `parsePacket()`), and always use the newest packet only.
+Tips for low latency suggested by claude: call `WiFi.setSleep(false)` (the default power save adds 100 ms or more), never block the loop (poll `parsePacket()`), and always use the newest packet only.
 
 ## Packet format
 
-5 bytes, **little-endian** (same as the ESP):
+5 bytes, **little-endian** (same as the ESP hopefully):
 
 | Byte | Type | Meaning |
 |------|------|---------|
@@ -26,10 +26,20 @@ Rate: **200 packets per second** by default (set in Unity, 10-1000). The same pa
 
 ## Network setup
 
-- **Use your own router or access point** for tests and the concert. School and venue networks often isolate devices from each other (nothing arrives) and add delay.
-- The Unity computer and all ESPs must be on that network. Windows may ask to allow Unity through the firewall on first run: allow it for private networks.
+- Could be nice to have our own router for the festival, also we could have a fixed IP address for each ESP if we always work on the same network (I think)
+- The Unity computer and all ESPs must be on the same network.
 - Unity's computer sends to each ESP's IP and port directly (no broadcast).
 
+
+
+## Checklist when nothing arrives
+
+- Unity status line shows 0 pkt/s: the component is disabled or has no valid target (see Console).
+- Status line shows `ERROR`: the computer has no network or the IP is unreachable.
+- Pkt/s fine but the ESP sees nothing: wrong IP or port, different network or subnet, router client isolation, or a firewall.
+- Vibration is delayed or jerky: Wi-Fi sleep still on, weak signal, or a busy network.
+
+### The following is mainly for Loïc
 ## Unity side
 
 `UdpHapticSender` is on the same GameObject as `ChoirHost` (or assign it in the Inspector).
@@ -45,10 +55,3 @@ Rate: **200 packets per second** by default (set in Unity, 10-1000). The same pa
 3. You should see about 200 pkt/s, a moving `env` bar and `lost 0`. `lost` counts missing sequence numbers.
 
 To test with a real ESP, use its IP instead of `127.0.0.1`; you can still run the listener on the computer to confirm Unity is sending, since the status line already shows that.
-
-## Checklist when nothing arrives
-
-- Unity status line shows 0 pkt/s: the component is disabled or has no valid target (see Console).
-- Status line shows `ERROR`: the computer has no network or the IP is unreachable.
-- Pkt/s fine but the ESP sees nothing: wrong IP or port, different network or subnet, router client isolation, or a firewall.
-- Vibration is delayed or jerky: Wi-Fi sleep still on, weak signal, or a busy network.
