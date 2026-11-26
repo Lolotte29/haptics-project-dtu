@@ -1,57 +1,61 @@
 # ESP Wi-Fi link (for the ESP side)
 
-Unity sends the live amplitude envelope (only that for now) of the choir to every bracelet over **UDP**. Every ESP receives the same packets. There is no reply and no connection: just listen on a port and use the newest value.
+Unity turns the live features of the choir (amplitude envelope, spectral flux, onsets) into **one intensity byte** and sends it over **UDP** to every bracelet. Every ESP receives the same bytes. There is no reply and no connection: just listen on a port and use the newest value.
+
+The component in use is `ChoirHapticAdvancedBridge` (file `ChoirHostBridge.cs`). The older `UdpHapticSender` (5-byte packet with a sequence number, own send thread) is still in the project but is **not** used in the scene; see the end of this file.
 
 ## What the ESP must do
 
 1. Join the Wi-Fi network the Unity computer is on.
-2. Get each ESP's IP address and write them in the Unity interface.
-3. Listen on a UDP port (we choose **4210** by default).
-4. For each packet: check it, take the newest envelope, set the vibration strength.
-5. **Safety timeout:** if no valid packet arrives for about (for instance) 200 ms, set the vibration to 0, so if no data arrives the bracelet does not keep vibrating (that's just a suggestion)
+2. Get each ESP's IP address and write them in the Unity interface (several are allowed).
+3. Listen on a UDP port (**4210** by default).
+4. For each packet: if it is exactly 1 byte, use it as the vibration strength (0 = off, up to the configured maximum, 110 by default; 127 is the largest value the bridge can send).
+5. **Safety timeout:** if no packet arrives for about 300 ms, set the vibration to 0 (a suggestion; Unity resends the value at least every 100 ms, see below, so a healthy link never triggers it).
 
-Tips for low latency suggested by claude: call `WiFi.setSleep(false)` (the default power save adds 100 ms or more), never block the loop (poll `parsePacket()`), and always use the newest packet only.
+Tips for low latency: call `WiFi.setSleep(false)` (the default power save adds 100 ms or more), never block the loop (poll `parsePacket()`), and always use the newest packet only.
 
 ## Packet format
 
-5 bytes, **little-endian** (same as the ESP hopefully):
+**1 byte**, unsigned: the intensity. No marker and no sequence number, so the ESP cannot tell a stray UDP packet from ours or detect a lost one; keep the bracelets on a private network.
 
-| Byte | Type | Meaning |
-|------|------|---------|
-| 0 | uint8 | Marker, always `0xA5`. Ignore any packet that does not start with it or is not exactly 5 bytes. |
-| 1-2 | uint16 | Sequence number, +1 per packet, wraps from 65535 to 0. Drop a packet if it is older than the last one (`(int16_t)(seq - lastSeq) <= 0`). |
-| 3-4 | uint16 | Envelope: 0 = silence, 65535 = full scale. Map to your PWM range. |
-
-Rate: **200 packets per second** by default (set in Unity, 10-1000). The same packet goes to all ESPs. The ESP can ignore the rate; it should just use the latest value.
+Timing:
+- Unity computes a new value at `Send Rate Hz` (default 50) and sends it **when it changed**, and otherwise **at least every `Keep Alive Ms`** (default 100). A lost packet is therefore repaired within 100 ms, and the stream never goes silent while Unity runs.
+- Silence is sent as `0`, also repeated every keep-alive interval.
+- The value is already smoothed in Unity (attack 15 ms, release 90 ms by default); the ESP does not need to filter it.
 
 ## Network setup
 
 - Could be nice to have our own router for the festival, also we could have a fixed IP address for each ESP if we always work on the same network (I think)
 - The Unity computer and all ESPs must be on the same network.
-- Unity's computer sends to each ESP's IP and port directly (no broadcast).
-
-
+- Unity sends to each ESP's IP and port directly (no broadcast), through one socket, so one unreachable bracelet does not disturb the others.
 
 ## Checklist when nothing arrives
 
-- Unity status line shows 0 pkt/s: the component is disabled or has no valid target (see Console).
-- Status line shows `ERROR`: the computer has no network or the IP is unreachable.
-- Pkt/s fine but the ESP sees nothing: wrong IP or port, different network or subnet, router client isolation, or a firewall.
+- Console says `no valid target, not sending`: the first IP field is empty or wrong and the list has no valid entry.
+- Console says `UDP error: <ip>:<port>: ...`: the computer has no network or that IP is unreachable. Each distinct error is logged once, and the other bracelets keep working.
+- Console says `ignoring invalid target`: that entry is not an IPv4 address or the port is outside 1-65535.
+- Component enabled and no error, but the ESP sees nothing: wrong IP or port, different network or subnet, router client isolation, or a firewall.
 - Vibration is delayed or jerky: Wi-Fi sleep still on, weak signal, or a busy network.
 
 ### The following is mainly for Loïc
-## Unity side
+## Unity side: `ChoirHapticAdvancedBridge`
 
-`UdpHapticSender` is on the same GameObject as `ChoirHost` (or assign it in the Inspector).
-- **Targets:** one entry per bracelet, IP and port, e.g. `192.168.1.51` / `4210`.
-- **Send Rate Hz**, **Output Gain** (multiplies the envelope before sending; a sung voice is quiet, raise it if the bracelets feel weak).
-- Changes to targets, rate and gain apply when the component is disabled and enabled again (or on the next Play).
-- The line at the bottom left of the Game view shows target count, packets per second, the envelope sent, and any send error.
+Add it to the same GameObject as `ChoirHost` (or assign the host in the Inspector).
+
+- **Targets:** `Esp32 IP` + `Port` is the first bracelet (these two fields stay so older scenes keep working; leave the IP empty to use only the list). **Additional Targets** is a list with one IP and port per further bracelet. Duplicates are ignored. Every bracelet gets the same byte.
+- **Send Rate Hz:** how often a new value is computed (the frame rate also limits it). **Keep Alive Ms:** minimum resend interval for an unchanged value, 0 = only on change.
+- **Feature Weights / Shaping / Smoothing:** envelope + flux + onset bonus, then noise gate, gamma, soft clip (tanh) and attack/release smoothing; **Max Intensity** is the headroom (the largest byte value that is ever sent).
+- Changes to targets, rate and keep-alive apply when the component is disabled and enabled again (or on the next Play).
+- Console messages: invalid targets (once), UDP errors (each distinct error once).
 
 ## Test without an ESP
 
-1. In Unity set one target `127.0.0.1` / `4210` and press Play with audio running.
+1. In Unity set **Esp32 IP** to `127.0.0.1` (empty the extra list) and press Play with audio running.
 2. In a terminal at the repository root: `python tools/udp_listen.py`
-3. You should see about 200 pkt/s, a moving `env` bar and `lost 0`. `lost` counts missing sequence numbers.
+3. You should see an `intensity` value and bar moving. The packet rate is lower than the send rate because unchanged values are only resent every keep-alive interval (about 10 pkt/s at silence or a steady note, more when the level moves).
 
-To test with a real ESP, use its IP instead of `127.0.0.1`; you can still run the listener on the computer to confirm Unity is sending, since the status line already shows that.
+To test with a real ESP, use its IP instead of `127.0.0.1`.
+
+## Older sender (`UdpHapticSender`, not used in the scene)
+
+Own thread, fixed rate (default 200 pkt/s), a list of targets, status line in the Game view, output gain. Packet of 5 bytes, little-endian: byte 0 marker `0xA5`; bytes 1-2 uint16 sequence number (+1 per packet, wraps); bytes 3-4 uint16 envelope (0..65535). The ESP drops a packet whose sequence is not newer: `(int16_t)(seq - lastSeq) <= 0`. It carries only the envelope (no flux or onset shaping). Kept because its sequence number and threaded timing are more robust; `tools/udp_listen.py` also understands this format. To use it, disable the bridge (the ESP must then parse 5 bytes).

@@ -1,10 +1,13 @@
-"""Prints the envelope packets sent by UdpHapticSender, so you can test without an ESP.
+"""Prints the packets sent by Unity, so you can test without an ESP.
 
     python tools/udp_listen.py            # listens on port 4210
     python tools/udp_listen.py 4210
 
-In Unity the sender target must be this computer: 127.0.0.1, same port. Stop with Ctrl+C.
-Packet format: see docs/esp-wifi.md.
+In Unity (ChoirHapticAdvancedBridge) the target must be this computer: 127.0.0.1, same port. Stop with Ctrl+C.
+Understands both formats, see docs/esp-wifi.md:
+  - 1 byte  = intensity 0..127 (ChoirHapticAdvancedBridge, the one in use)
+  - 5 bytes = marker 0xA5 + sequence + 16-bit envelope (older UdpHapticSender)
+The bridge only sends when the value changes or every keep-alive interval, so pkt/s is lower than its send rate.
 """
 import socket
 import struct
@@ -23,7 +26,8 @@ last_seq = None
 received = lost = ignored = 0
 window_start = time.time()
 window_count = 0
-env = 0.0
+level = 0.0      # 0..1 for the bar
+text = ""
 
 try:
     while True:
@@ -33,11 +37,15 @@ try:
             data = None
         now = time.time()
         if data is not None:
-            if len(data) != 5 or data[0] != MAGIC:
-                ignored += 1
-            else:
+            if len(data) == 1:
+                level = min(data[0] / 127, 1.0)
+                text = f"intensity {data[0]:3d}"
+                received += 1
+                window_count += 1
+            elif len(data) == 5 and data[0] == MAGIC:
                 seq, raw = struct.unpack_from("<HH", data, 1)
-                env = raw / 65535
+                level = raw / 65535
+                text = f"env {level:4.2f}"
                 if last_seq is not None:
                     gap = (seq - last_seq) & 0xFFFF
                     if 1 < gap < 0x8000:
@@ -45,10 +53,12 @@ try:
                 last_seq = seq
                 received += 1
                 window_count += 1
+            else:
+                ignored += 1
         if now - window_start >= 0.5:
             rate = window_count / (now - window_start)
-            bar = "#" * int(env * 40)
-            print(f"\r{rate:6.0f} pkt/s  env {env:4.2f} |{bar:<40}| received {received} lost {lost} ignored {ignored}   ", end="", flush=True)
+            bar = "#" * int(level * 40)
+            print(f"\r{rate:6.0f} pkt/s  {text:<14} |{bar:<40}| received {received} lost {lost} ignored {ignored}   ", end="", flush=True)
             window_start, window_count = now, 0
 except KeyboardInterrupt:
     print()
