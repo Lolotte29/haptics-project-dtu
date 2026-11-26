@@ -33,6 +33,27 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
              "and keeps the ESP's safety timeout from firing during a steady note. 0 = send only on change.")]
     [Min(0f)] public float keepAliveMs = 100f;
 
+    public enum HapticSource { Envelope, Harmony }
+
+    [Header("Source (can be switched while playing)")]
+    [Tooltip("Envelope: loudness + spectral flux + onset punch (as before). Harmony: the harmonic tension of the voices " +
+             "(0 = calm chord in the key, 1 = tense), only while something is sung. Needs Estimate Key on the ChoirHost.")]
+    public HapticSource source = HapticSource.Envelope;
+    [Tooltip("Buttons in the Game view to switch the source and a line showing the value sent.")]
+    public bool showControls = true;
+
+    [Header("Harmony source")]
+    [Range(0f, 1f)] [Tooltip("Share of the full intensity felt on a calm chord (tension 0), so singing is never silent.")]
+    public float harmonyBase = 0.25f;
+    [Tooltip("Multiplies the tension before sending (result clamped to 1). Raise it if the tension rarely gets high.")]
+    [Min(0f)] public float harmonyGain = 1.0f;
+    [Tooltip("Envelope level at which something counts as sounding. Below it the harmony output fades to 0 (the tension " +
+             "memory lasts about half a second after the singing stops).")]
+    [Min(0.0001f)] public float presenceEnvelope = 0.03f;
+    [Tooltip("The tension already lags about 0.5 s, so these are slower than the envelope smoothing.")]
+    public float harmonyAttackMs = 200f;
+    public float harmonyReleaseMs = 600f;
+
     [Header("Feature Weights")]
     public float envelopeWeight = 1.0f;
     public float fluxWeight = 0.15f;
@@ -58,6 +79,7 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
     private float timer, sendInterval, lastTick, sinceSend;
     private float smoothed, onsetEnv;
     private int lastSent = -1;          // -1 = nothing sent yet, so the first value always goes out
+    private int currentIntensity;       // latest computed value, for the on-screen line
     private string loggedError;
     private readonly byte[] packet = new byte[1];
 
@@ -129,24 +151,41 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
         // Entropy-aware flux: less flux contribution for tonal singing
         float flux = Mathf.Clamp01(mix.SpectralFlux * 2f) * Mathf.Lerp(0.3f, 1f, mix.SpectralEntropy);
 
-        float raw = choirHost.Envelope * envelopeWeight + flux * fluxWeight;
+        bool harmony = source == HapticSource.Harmony;
+        float target, attack, release;
+        if (harmony)
+        {
+            // Tension (0 calm .. 1 tense) lifts the intensity from harmonyBase to full, and only while something sounds.
+            float tension = Mathf.Clamp01(choirHost.Harmony.Tension * harmonyGain);
+            float presence = Mathf.Clamp01(choirHost.Envelope / presenceEnvelope);
+            target = Mathf.Lerp(harmonyBase, 1f, tension) * presence;
+            attack = harmonyAttackMs;
+            release = harmonyReleaseMs;
+        }
+        else
+        {
+            float raw = choirHost.Envelope * envelopeWeight + flux * fluxWeight;
 
-        // Gate -> perceptual curve -> soft clip (no hard saturation)
-        float gated = Mathf.Clamp01((raw - noiseGate) / (1f - noiseGate));
-        float shaped = Mathf.Pow(gated, gamma) * masterGain;
-        float target = (float)Math.Tanh(shaped);
+            // Gate -> perceptual curve -> soft clip (no hard saturation)
+            float gated = Mathf.Clamp01((raw - noiseGate) / (1f - noiseGate));
+            float shaped = Mathf.Pow(gated, gamma) * masterGain;
+            target = (float)Math.Tanh(shaped);
+            attack = attackMs;
+            release = releaseMs;
+        }
 
         // Asymmetric one-pole smoothing: fast attack, slower release
-        float tau = Mathf.Max(0.0001f, (target > smoothed ? attackMs : releaseMs) / 1000f);
+        float tau = Mathf.Max(0.0001f, (target > smoothed ? attack : release) / 1000f);
         smoothed += (target - smoothed) * (1f - Mathf.Exp(-dt / tau));
 
-        // Onset punch as a short decaying envelope, added AFTER smoothing
+        // Onset punch as a short decaying envelope, added AFTER smoothing (envelope source only: harmony should stay calm)
         onsetEnv = Mathf.Max(onsetEnv * Mathf.Exp(-dt / Mathf.Max(0.0001f, onsetHoldMs / 1000f)), mix.Onset ? 1f : 0f);
 
-        float level = Mathf.Clamp01(smoothed + onsetEnv * onsetBonus);
+        float level = Mathf.Clamp01(smoothed + (harmony ? 0f : onsetEnv * onsetBonus));
         int intensity = Mathf.Clamp(Mathf.RoundToInt(level * maxIntensity), 0, maxIntensity);
+        currentIntensity = intensity;
 
-        if (logValues) Debug.Log($"env {choirHost.Envelope:F2} sent {intensity}");
+        if (logValues) Debug.Log($"{source}: env {choirHost.Envelope:F2} tension {choirHost.Harmony.Tension:F2} sent {intensity}");
 
         // Send on change, and otherwise at the keep-alive interval (so a lost packet is repaired and zeros keep arriving).
         bool changed = intensity != lastSent;
@@ -175,5 +214,23 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
     {
         udpClient?.Close();
         udpClient = null;
+    }
+
+    private static readonly string[] SourceNames = { "Envelope", "Harmony" };
+
+    void OnGUI()
+    {
+        if (!showControls) return;
+        float scale = Mathf.Max(1f, Screen.height / 540f);
+        GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+        float y = Screen.height / scale - 64f;
+
+        GUI.Label(new Rect(10, y, 100, 24), "Haptic source");
+        source = (HapticSource)GUI.Toolbar(new Rect(110, y, 180, 24), (int)source, SourceNames);
+
+        string state = udpClient == null ? "NOT SENDING (no valid target)" : $"{endpoints.Length} target(s)";
+        string warn = source == HapticSource.Harmony && choirHost != null && !choirHost.HarmonyAvailable
+            ? "   harmony analysis is OFF (tick Estimate Key on ChoirHost)" : "";
+        GUI.Label(new Rect(10, y + 24, 760, 24), $"{state}   sent {currentIntensity}/{maxIntensity}{warn}");
     }
 }

@@ -13,7 +13,7 @@ Analyse live singing and turn it into features that will drive haptic actuators.
 ## Status of the hardware
 
 - Input today: **VB-Audio Virtual Cable** (stereo). Later: several mics straight into the computer, either one multichannel interface or several devices (undecided).
-- Output: ESP32 bracelets over **Wi-Fi/UDP** (replaces Bluetooth). `ChoirHapticAdvancedBridge` (`ChoirHostBridge.cs`) sends one intensity byte from envelope, flux and onsets to one or several IPs; it works with the ESP (per the author). Harmonic tension is not part of it yet. See `docs/esp-wifi.md`.
+- Output: ESP32 bracelets over **Wi-Fi/UDP** (replaces Bluetooth). `ChoirHapticAdvancedBridge` (`ChoirHostBridge.cs`) sends one intensity byte to one or several IPs; the source is switchable between *Envelope* (envelope, flux, onsets) and *Harmony* (harmonic tension), the envelope path works with the ESP (per the author), the harmony path is untested. The ESP firmware is `tools/beetle_wifi_unity.ino` (two LRAs, amplitude only). See `docs/esp-wifi.md`.
 
 Decided so far: 4 mics plugged into one computer (how is open, see `docs/mic-input.md`); latency "as good as possible" (no number); probably fewer than 5 bracelets with up to 4 actuators each; Bluetooth is a later problem.
 

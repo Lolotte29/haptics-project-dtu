@@ -44,6 +44,13 @@ public class ChoirHost : MonoBehaviour
     /// <summary>Live amplitude envelope of the mix, 0..1. Safe to read from any thread (no Unity API involved).</summary>
     public float Envelope => _choir != null ? _choir.EnvelopeLive : 0f;
 
+    /// <summary>Latest harmony result (key, tension). Tension is 0 and the key -1 when harmony analysis is off or nothing sounds.
+    /// Read from the main thread; with an input that pushes from the audio thread the fields may come from two neighbouring steps, which is harmless.</summary>
+    public HarmonyFrame Harmony => _choir != null ? _choir.Harmony : default;
+
+    /// <summary>True when a harmony analyzer is attached (<c>estimateKey</c> on, or one set through <see cref="HarmonyAnalyzer"/>).</summary>
+    public bool HarmonyAvailable => _choir != null && _choir.HarmonyAnalyzer != null;
+
     /// <summary>Plug in chord recognition before Awake finishes or any time later; it sees only the sources whose YIN is on.</summary>
     public IHarmonyAnalyzer HarmonyAnalyzer
     {

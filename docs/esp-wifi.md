@@ -44,9 +44,17 @@ Add it to the same GameObject as `ChoirHost` (or assign the host in the Inspecto
 
 - **Targets:** `Esp32 IP` + `Port` is the first bracelet (these two fields stay so older scenes keep working; leave the IP empty to use only the list). **Additional Targets** is a list with one IP and port per further bracelet. Duplicates are ignored. Every bracelet gets the same byte.
 - **Send Rate Hz:** how often a new value is computed (the frame rate also limits it). **Keep Alive Ms:** minimum resend interval for an unchanged value, 0 = only on change.
-- **Feature Weights / Shaping / Smoothing:** envelope + flux + onset bonus, then noise gate, gamma, soft clip (tanh) and attack/release smoothing; **Max Intensity** is the headroom (the largest byte value that is ever sent).
+- **Source (switch while playing, Inspector or the buttons at the bottom left of the Game view):**
+  - *Envelope*: loudness + spectral flux + onset punch, then the shaping below (unchanged behaviour, the default).
+  - *Harmony*: the harmonic tension of the voices (needs **Estimate Key** on the ChoirHost, otherwise the Game view warns). Intensity = `Harmony Base` + (1 - `Harmony Base`) x tension, times a presence factor from the envelope so it goes to 0 when nobody sings, smoothed with `Harmony Attack/Release Ms` (200 / 600 ms by default; the tension itself already lags about 0.5 s). No onset punch in this mode. `Harmony Gain` scales the tension if it rarely gets high.
+  - The line under the buttons shows the number of targets and the value being sent.
+- **Feature Weights / Shaping / Smoothing** (envelope source): envelope + flux + onset bonus, then noise gate, gamma, soft clip (tanh) and attack/release smoothing; **Max Intensity** is the headroom (the largest byte value that is ever sent).
 - Changes to targets, rate and keep-alive apply when the component is disabled and enabled again (or on the next Play).
 - Console messages: invalid targets (once), UDP errors (each distinct error once).
+
+## ESP side in this repository
+
+`tools/beetle_wifi_unity.ino`: an ESP32-C3 (DFRobot Beetle) with a TCA9548A multiplexer and two DRV2605 drivers (channels 6 and 7) for two LRAs, in open-loop real-time (RTP) mode at a fixed 170 Hz. It reads 1-byte packets, keeps the newest, clamps to 0..127 and writes it to both actuators. So the only thing Unity can control is the **amplitude**, and both actuators always get the same value. Not yet in the firmware: the safety timeout described above (the last value stays if Unity stops) and keeping the Wi-Fi credentials out of the file.
 
 ## Test without an ESP
 
