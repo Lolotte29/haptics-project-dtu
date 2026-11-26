@@ -238,7 +238,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChoirHapticAdvancedBridge
   choirHost: {fileID: 476623315}
-  esp32IP: 192.168.137.128
+  esp32IP: 192.168.137.105
   port: 4210
   additionalTargets: []
   sendRateHz: 100
