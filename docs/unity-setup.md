@@ -47,3 +47,9 @@ See [testing-features.md](testing-features.md) for what to expect from each feat
 - Audio-thread CPU in the Profiler (Window > Analysis > Profiler).
 
 When you add scripts or scenes in Unity, commit them together with their `.meta` files. `Library/`, `Temp/`, `Logs/`, `UserSettings/` are git-ignored.
+
+## Separate recordings per singer (e.g. Dagstuhl ChoirSet)
+
+1. Import the 4 mono WAVs (one per singer, same sample rate) into `Assets/`. In each clip's import settings set **Load Type = Decompress On Load**.
+2. On the `Input` object (or a new one) add **MultiClipInput**, assign *Host* (ChoirHost) and drag the 4 clips into *Clips* in voice order. Use the same microphone type for every singer (e.g. the dynamic or headset track, not the larynx one).
+3. Disable the *AudioSourceInput* component so only one input feeds the host. Press Play: you hear the quartet (*Monitor*), and the HUD shows per-voice pitch, level and gains.

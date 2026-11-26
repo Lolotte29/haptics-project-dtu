@@ -26,5 +26,5 @@ Do one step at a time. Each step is one small script plus a test in `dsp/Haptics
 
 ## 6. Later, after tension works
 - [ ] Haptic mapping (tension + loudness -> intensity + onset pulse), smoothing.
-- [ ] Real multi-mic input (one multichannel device or several; e.g. Lasp), since `AudioSourceInput` may down-mix.
+- [ ] Real multi-mic input (one multichannel device or several; e.g. Lasp), since `AudioSourceInput` may down-mix. Stand-in for demos and testing: `MultiClipInput` (per-singer mono files), written but not yet tried in the editor.
 - [ ] Bluetooth/ESP sink. Open questions: latency budget, BLE vs Classic, bracelets/actuators, one stream to many wearers.

@@ -24,7 +24,7 @@ Recommendation: A, with the interface chosen so it exposes all inputs as one dev
 1. **Unity side (the real risk).**
    - `AudioSourceInput` uses Unity's `Microphone` class, which normally returns a **mono** clip from one device. It will not deliver 4 channels from an interface.
    - So a different input adapter is needed, for example [keijiro/Lasp](https://github.com/keijiro/Lasp) (Unlicense, desktop, per-device/channel input), or a small native/ASIO plugin. Whether Lasp gives clean 4-channel streams from one interface is unverified. Test with a borrowed interface early.
-   - The current VB-Audio Virtual Cable setup is only for development.
+   - The current VB-Audio Virtual Cable setup is only for development. For demos without microphones, `MultiClipInput` plays per-singer mono files (see unity-setup.md); a live adapter would feed `ChoirHost.Push` the same way.
 2. **Microphone type and bleed.** The singers stand close together, so every mic also hears the others. Close-mic'd dynamic or headset mics reduce bleed. The software works on the sum of the voices for loudness/spectral features, so some bleed is tolerable, but YIN pitch per singer gets less reliable when a neighbour is nearly as loud as the singer.
 3. **Latency.** Use the driver's smallest stable buffer (about 128-256 samples at 48 kHz, 3-5 ms) and set Unity's DSP buffer to *Best latency*. Bluetooth to the bracelets will likely add more than the audio side; measure both later.
 4. **Gain staging.** Set preamp gain so the loudest singer peaks well below clipping (the app shows `CLIP` when a raw input reaches full scale), then use the per-channel trim in the app to even the channels out.

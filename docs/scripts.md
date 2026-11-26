@@ -44,6 +44,7 @@ Status: **done** = implemented and unit-tested on synthetic signals; **untested*
 | `ChoirHostBridge.cs` | Class `ChoirHapticAdvancedBridge` (the sender in use): envelope + flux + onset -> gate, gamma, soft clip, smoothing -> one intensity byte over UDP to one or several ESPs, resent at least every keep-alive interval; errors logged once | works with the ESP (per the author); keep-alive, multi-target and error handling added, not yet tried in Unity. The file name differs from the class name |
 | `UdpHapticSender.cs` | Older sender, not used in the scene: own thread sends `ChoirHost.Envelope` as a 5-byte packet over UDP to a list of ESP IPs (default 200 pkt/s), status line in the Game view | untested in Unity; packet format unit-tested |
 | `AudioSourceInput.cs` | Feeds a clip (audio thread) or a capture device read directly from the mic buffer (main thread, VB-Cable) into `ChoirHost` | untested; reads one device's channels only |
+| `MultiClipInput.cs` | One mono clip per singer (e.g. Dagstuhl ChoirSet) -> channel i / voice i; plays them (monitor) and feeds the analysis on the audio clock | untested in Unity; the interleaving is `Dsp/Core/ChannelMap` (tested). A live multi-mic adapter would be a sibling calling `ChoirHost.Push` |
 
 Tests: `dsp/Haptics.Dsp.Tests/` (`cd dsp && dotnet test Haptics.Dsp.Tests`), one file per tested area: `YinTests`, `FeatureExtractorTests`, `PitchRobustnessTests`, `ChoirTests` (modes, mix, harmony hook), with shared synthetic signals in `TestSignals`.
 

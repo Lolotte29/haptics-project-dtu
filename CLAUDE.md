@@ -36,9 +36,9 @@ audio in (channel i = singer i)
 `Choir` wraps the voice stage: `Choir.Process(interleavedSamples, frames, channels)` fills `Choir.Voices`. There is no mode: YIN is switchable **per source** (`Choir.SetPitchEnabled(i, bool)`, default on, also for a single source; HUD toggle and `ChoirHost.pitchEnabled`). Sources with YIN off cost no YIN time and stay unvoiced in `Choir.Voices` (pitch is the only per-singer analysis), so the optional `IHarmonyAnalyzer` (chord recognition, not implemented yet) only ever sees the sources the user chose. Spectral features of the summed signal (`Choir.Mix`, gain 1/sqrt(N); one source = that channel) always run. Spectral features are deliberately never computed per singer. Planned stages go in `Dsp/Choir/`. Order and checklist: docs/roadmap.md.
 
 - `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
-- `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD) and `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly).
+- `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD) `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly) and `MultiClipInput` (one mono clip per singer, e.g. Dagstuhl ChoirSet stems, played and analysed on the audio clock; unverified in the editor). A live multi-mic adapter would be a sibling calling `ChoirHost.Push`.
 - `docs/`: `esp-wifi.md` (Wi-Fi link to the bracelets; Wi-Fi replaces Bluetooth), `unity-setup.md`, `mic-input.md` (input options for the supervisor), `concert-manual.md` (sound check and gains), `testing-features.md` (what to expect per feature).
-- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (52 tests).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (54 tests).
 
 ## Honest state
 
