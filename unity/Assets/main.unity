@@ -162,7 +162,7 @@ MonoBehaviour:
   pitchEnabled: 01010101y
   meterFullScaleRms: 0.2
   envelopeAttackMs: 5
-  envelopeReleaseMs: 100
+  envelopeReleaseMs: 10
 --- !u!4 &476623316
 Transform:
   m_ObjectHideFlags: 0
@@ -227,7 +227,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChoirHapticAdvancedBridge
   choirHost: {fileID: 476623315}
-  esp32IP: 192.168.137.59
+  esp32IP: 192.168.137.208
   port: 4210
   sendRateHz: 50
   envelopeWeight: 1
