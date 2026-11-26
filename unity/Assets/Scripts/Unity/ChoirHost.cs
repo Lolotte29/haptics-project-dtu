@@ -30,8 +30,9 @@ public class ChoirHost : MonoBehaviour
     [Header("Amplitude envelope (FeatureFrame.Envelope)")]
     [Tooltip("How fast the envelope rises, in ms (time constant). Small = punchy. 0 = instant.")]
     [Min(0f)] [SerializeField] private float envelopeAttackMs = 5f;
-    [Tooltip("How fast the envelope falls, in ms (time constant). Large = smooth, no flutter. 0 = instant.")]
-    [Min(0f)] [SerializeField] private float envelopeReleaseMs = 100f;
+    [Tooltip("How fast the envelope falls, in ms (time constant). Large = smooth, no flutter. 0 = instant. Keep it small " +
+             "(about 10) when the haptic bridge is used: the bridge smooths again (its own Attack/Release), so a large value here is double smoothing.")]
+    [Min(0f)] [SerializeField] private float envelopeReleaseMs = 10f;
 
     private Choir _choir;
     private HarmonyTracker _harmony;

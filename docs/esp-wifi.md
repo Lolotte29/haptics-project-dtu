@@ -18,6 +18,8 @@ Tips for low latency: call `WiFi.setSleep(false)` (the default power save adds 1
 
 **1 byte**, unsigned: the intensity. No marker and no sequence number, so the ESP cannot tell a stray UDP packet from ours or detect a lost one; keep the bracelets on a private network.
 
+Optional **3-byte packet** (`BeatPacket.cs`), sent only when the source is *Env + beat* and **Beat On Esp** is on: byte 0 = intensity (same as above), byte 1 = beat depth 0..255 (= 0..1), byte 2 = beat rate in 0.5 Hz steps. The firmware `tools/beetle_wifi_beating` makes the amplitude wobble itself (raised cosine, peaks keep the level, dips go down by the depth) and updates the actuators at 500 Hz. A 1-byte packet means no beating. Firmware that only reads the first byte (the older `beetle_wifi_unity.ino`) still works and plays the level without the beating.
+
 Timing:
 - Unity computes a new value at `Send Rate Hz` (default 50) and sends it **when it changed**, and otherwise **at least every `Keep Alive Ms`** (default 100). A lost packet is therefore repaired within 100 ms, and the stream never goes silent while Unity runs.
 - Silence is sent as `0`, also repeated every keep-alive interval.
@@ -48,6 +50,7 @@ Add it to the same GameObject as `ChoirHost` (or assign the host in the Inspecto
   - *Envelope*: loudness + spectral flux + onset punch, then the shaping below (unchanged behaviour, the default).
   - *Harmony*: the harmonic tension of the voices (needs **Estimate Key** on the ChoirHost, otherwise the Game view warns). Intensity = `Harmony Base` + (1 - `Harmony Base`) x tension, times a presence factor from the envelope so it goes to 0 when nobody sings, smoothed with `Harmony Attack/Release Ms` (200 / 600 ms by default; the tension itself already lags about 0.5 s). No onset punch in this mode. `Harmony Gain` scales the tension if it rarely gets high.
   - *EnvelopeBeat* ("Env + beat" button): the envelope path above, with a **beating** on top. A raised-cosine wobble multiplies the level: the peaks keep the envelope level and the dips go down by `Beat Max Depth` (0.7 = to 30%) at full tension. Depth and speed follow the smoothed tension: no beating below `Beat Threshold` (0.15, a calm chord is a plain envelope), speed from `Beat Rate Min Hz` (3) to `Beat Rate Max Hz` (12) at full tension. It never exceeds the plain envelope and is silent when the envelope is, so the loudness stays in charge. The wobble is sampled at the update rate (about the frame rate, at most the send rate), so keep the maximum rate below about a quarter of it.
+  - **Beat On Esp** (3-byte packet): see "Optional 3-byte packet" below.
   - The line under the buttons shows the number of targets and the value being sent (and the current beat depth and speed).
 - **Feature Weights / Shaping / Smoothing** (envelope source): envelope + flux + onset bonus, then noise gate, gamma, soft clip (tanh) and attack/release smoothing; **Max Intensity** is the headroom (the largest byte value that is ever sent).
 - Changes to targets, rate and keep-alive apply when the component is disabled and enabled again (or on the next Play).
@@ -56,6 +59,9 @@ Add it to the same GameObject as `ChoirHost` (or assign the host in the Inspecto
 ## ESP side in this repository
 
 `tools/beetle_wifi_unity.ino`: an ESP32-C3 (DFRobot Beetle) with a TCA9548A multiplexer and two DRV2605 drivers (channels 6 and 7) for two LRAs, in open-loop real-time (RTP) mode at a fixed 170 Hz. It reads 1-byte packets, keeps the newest, clamps to 0..127 and writes it to both actuators. So the only thing Unity can control is the **amplitude**, and both actuators always get the same value. Not yet in the firmware: the safety timeout described above (the last value stays if Unity stops) and keeping the Wi-Fi credentials out of the file.
+
+### New firmware: `tools/beetle_wifi_beating/`
+An Arduino sketch folder (open `beetle_wifi_beating.ino`). **Setup:** copy `secrets.example.h` to `secrets.h` in that folder and write your Wi-Fi name and password there; `secrets.h` is ignored by version control. Same hardware and drive settings as the older file, plus: the 3-byte packet with the ESP-side beating (500 Hz updates, 400 kHz I2C), a 300 ms safety timeout (vibration off when Unity stops), and the IP printed every 10 s on the serial monitor. Untested on hardware: check the serial monitor for `IP:` and `(receiving)`, then raise `Beat Rate Max Hz` step by step to find what the actuator can render.
 
 ## Test without an ESP
 

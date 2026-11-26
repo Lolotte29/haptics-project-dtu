@@ -13,7 +13,7 @@ Analyse live singing and turn it into features that will drive haptic actuators.
 ## Status of the hardware
 
 - Input today: **VB-Audio Virtual Cable** (stereo). Later: several mics straight into the computer, either one multichannel interface or several devices (undecided).
-- Output: ESP32 bracelets over **Wi-Fi/UDP** (replaces Bluetooth). `ChoirHapticAdvancedBridge` (`ChoirHostBridge.cs`) sends one intensity byte to one or several IPs; the source is switchable between *Envelope* (envelope, flux, onsets), *Harmony* (harmonic tension) and *EnvelopeBeat* (envelope with a tension-driven beating on top); the envelope path works with the ESP (per the author), the other two are untested on the bracelet. The ESP firmware is `tools/beetle_wifi_unity.ino` (two LRAs, amplitude only). See `docs/esp-wifi.md`.
+- Output: ESP32 bracelets over **Wi-Fi/UDP** (replaces Bluetooth). `ChoirHapticAdvancedBridge` (`ChoirHostBridge.cs`) sends one intensity byte to one or several IPs; the source is switchable between *Envelope* (envelope, flux, onsets), *Harmony* (harmonic tension) and *EnvelopeBeat* (envelope with a tension-driven beating on top); the envelope path works with the ESP (per the author), the other two are untested on the bracelet. The ESP firmware is `tools/beetle_wifi_unity.ino` (two LRAs, amplitude only) or the newer `tools/beetle_wifi_beating/` (3-byte packet: it makes the beating itself, has a safety timeout, Wi-Fi credentials in an ignored `secrets.h`; untested on hardware). Every tunable and time constant is listed in `docs/tuning-parameters.md`. See `docs/esp-wifi.md`.
 
 Decided so far: 4 mics plugged into one computer (how is open, see `docs/mic-input.md`); latency "as good as possible" (no number); probably fewer than 5 bracelets with up to 4 actuators each; Bluetooth is a later problem.
 
@@ -38,7 +38,7 @@ audio in (channel i = singer i)
 - `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
 - `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD), `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly) and `MultiClipInput` (one mono clip per singer, e.g. Dagstuhl ChoirSet stems, played and analysed on the audio clock; unverified in the editor). A live multi-mic adapter would be a sibling calling `ChoirHost.Push`.
 - `docs/`: `esp-wifi.md` (Wi-Fi link to the bracelets; Wi-Fi replaces Bluetooth), `unity-setup.md`, `mic-input.md` (input options for the supervisor), `concert-manual.md` (sound check and gains), `testing-features.md` (what to expect per feature).
-- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (84 tests).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (101 tests).
 
 ## Honest state
 

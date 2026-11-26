@@ -4,8 +4,9 @@
     python tools/udp_listen.py 4210
 
 In Unity (ChoirHapticAdvancedBridge) the target must be this computer: 127.0.0.1, same port. Stop with Ctrl+C.
-Understands both formats, see docs/esp-wifi.md:
+Understands these formats, see docs/esp-wifi.md:
   - 1 byte  = intensity 0..127 (ChoirHapticAdvancedBridge, the one in use)
+  - 3 bytes = intensity, beat depth (0..255 = 0..1), beat rate (0.5 Hz steps) (bridge with Beat On Esp)
   - 5 bytes = marker 0xA5 + sequence + 16-bit envelope (older UdpHapticSender)
 The bridge only sends when the value changes or every keep-alive interval, so pkt/s is lower than its send rate.
 """
@@ -40,6 +41,11 @@ try:
             if len(data) == 1:
                 level = min(data[0] / 127, 1.0)
                 text = f"intensity {data[0]:3d}"
+                received += 1
+                window_count += 1
+            elif len(data) == 3:
+                level = min(data[0] / 127, 1.0)
+                text = f"int {data[0]:3d} d{data[1] / 255:3.1f} {data[2] / 2:4.1f}Hz"
                 received += 1
                 window_count += 1
             elif len(data) == 5 and data[0] == MAGIC:

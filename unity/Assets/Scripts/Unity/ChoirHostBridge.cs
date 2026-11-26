@@ -50,23 +50,20 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
     public float harmonyBase = 0.25f;
     [Tooltip("Multiplies the tension before sending (result clamped to 1). Raise it if the tension rarely gets high.")]
     [Min(0f)] public float harmonyGain = 1.0f;
-    [Tooltip("Envelope level at which something counts as sounding. Below it the harmony output fades to 0 (the tension " +
-             "memory lasts about half a second after the singing stops).")]
-    [Min(0.0001f)] public float presenceEnvelope = 0.03f;
-    [Tooltip("The tension already lags about 0.5 s, so these are slower than the envelope smoothing.")]
-    public float harmonyAttackMs = 200f;
-    public float harmonyReleaseMs = 600f;
 
     [Header("Beating (EnvelopeBeat source)")]
+    [Tooltip("ON: send level + depth + rate (3 bytes) to the ESP firmware tools/beetle_wifi_beating, which makes the beating itself " +
+             "at a high update rate (rates up to about 60 Hz are possible). OFF: the beating is applied here, at about the frame rate, " +
+             "and the ESP gets a plain 1-byte level (works with any firmware, but keep the top rate below about a quarter of the frame rate). " +
+             "Older firmware that only reads the first byte also works with ON, without the beating.")]
+    public bool beatOnEsp = false;
     [Range(0f, 1f)] [Tooltip("Tension below this gives no beating at all (plain envelope).")]
     public float beatThreshold = 0.15f;
     [Range(0f, 1f)] [Tooltip("How deep the dips go at full tension: 0.7 = the level drops to 30% of the envelope at the bottom of each beat. Peaks always reach the envelope.")]
     public float beatMaxDepth = 0.7f;
-    [Tooltip("Beating speed at tension 0 and at tension 1. Keep the top below about a quarter of the send rate.")]
+    [Tooltip("Beating speed at tension 0 and at tension 1. The tension is used as it is: it already lags about 0.5 s, so no extra smoothing.")]
     public float beatRateMinHz = 3f;
     public float beatRateMaxHz = 12f;
-    [Tooltip("Smoothing of the tension used here, so the depth and speed do not jump.")]
-    public float beatTensionSmoothMs = 300f;
 
     [Header("Feature Weights")]
     public float envelopeWeight = 1.0f;
@@ -93,10 +90,12 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
     private float timer, sendInterval, lastTick, sinceSend;
     private float smoothed, onsetEnv;
     private int lastSent = -1;          // -1 = nothing sent yet, so the first value always goes out
+    private int lastDepthByte, lastRateByte;
+    private bool lastExtended;
     private int currentIntensity;       // latest computed value, for the on-screen line
-    private float tensionSmoothed, beatPhase, beatDepth, beatRate;
+    private float beatPhase, beatDepth, beatRate;
     private string loggedError;
-    private readonly byte[] packet = new byte[1];
+    private readonly byte[] packet = new byte[Haptics.Dsp.BeatPacket.Size];
 
     void OnEnable()
     {
@@ -172,10 +171,12 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
         {
             // Tension (0 calm .. 1 tense) lifts the intensity from harmonyBase to full, and only while something sounds.
             float tension = Mathf.Clamp01(choirHost.Harmony.Tension * harmonyGain);
-            float presence = Mathf.Clamp01(choirHost.Envelope / presenceEnvelope);
-            target = Mathf.Lerp(harmonyBase, 1f, tension) * presence;
-            attack = harmonyAttackMs;
-            release = harmonyReleaseMs;
+            // Presence uses the same Noise Gate as the envelope path: 0 at or below it, full at twice it. This cuts the tension's
+            // memory (about half a second) when the singing stops.
+            float presence = Mathf.Clamp01((choirHost.Envelope - noiseGate) / Mathf.Max(0.0001f, noiseGate));
+            target = Mathf.Lerp(harmonyBase, 1f, tension) * presence; // tension is already smooth (about 0.5 s): same attack/release as below
+            attack = attackMs;
+            release = releaseMs;
         }
         else
         {
@@ -198,39 +199,53 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
 
         float level = Mathf.Clamp01(smoothed + (harmony ? 0f : onsetEnv * onsetBonus));
 
-        if (source == HapticSource.EnvelopeBeat)
+        bool beating = source == HapticSource.EnvelopeBeat;
+        beatDepth = 0f;
+        beatRate = 0f;
+        if (beating)
         {
-            // Beating: raised-cosine amplitude modulation of the envelope level. Depth and speed follow the (smoothed) tension;
-            // the modulation only removes from the level, so the result never exceeds the plain envelope and is 0 when it is 0.
+            // Beating: raised-cosine amplitude modulation of the envelope level. Depth and speed follow the tension
+            // (already smooth); the modulation only removes from the level, so the result never exceeds the plain
+            // envelope and is 0 when it is 0.
             float tension = choirHost.Harmony.Tension;
-            tensionSmoothed += (tension - tensionSmoothed) * (1f - Mathf.Exp(-dt / Mathf.Max(0.0001f, beatTensionSmoothMs / 1000f)));
-            beatDepth = beatMaxDepth * Mathf.Clamp01((tensionSmoothed - beatThreshold) / Mathf.Max(0.0001f, 1f - beatThreshold));
-            beatRate = Mathf.Lerp(beatRateMinHz, beatRateMaxHz, tensionSmoothed);
-            beatPhase = (beatPhase + beatRate * dt) % 1f;
-            level *= 1f - beatDepth * 0.5f * (1f - Mathf.Cos(2f * Mathf.PI * beatPhase));
+            beatDepth = beatMaxDepth * Mathf.Clamp01((tension - beatThreshold) / Mathf.Max(0.0001f, 1f - beatThreshold));
+            beatRate = Mathf.Lerp(beatRateMinHz, beatRateMaxHz, tension);
+            if (!beatOnEsp)
+            {
+                beatPhase = (beatPhase + beatRate * dt) % 1f;
+                level *= 1f - beatDepth * 0.5f * (1f - Mathf.Cos(2f * Mathf.PI * beatPhase));
+            }
         }
 
         int intensity = Mathf.Clamp(Mathf.RoundToInt(level * maxIntensity), 0, maxIntensity);
         currentIntensity = intensity;
+        bool extended = beating && beatOnEsp;     // 3-byte packet: the ESP makes the beating
+        int depthByte = extended ? Haptics.Dsp.BeatPacket.DepthToByte(beatDepth) : 0;
+        int rateByte = extended ? Haptics.Dsp.BeatPacket.RateToByte(beatRate) : 0;
 
-        if (logValues) Debug.Log($"{source}: env {choirHost.Envelope:F2} tension {choirHost.Harmony.Tension:F2} sent {intensity}");
+        if (logValues) Debug.Log($"{source}: env {choirHost.Envelope:F2} tension {choirHost.Harmony.Tension:F2} sent {intensity} depth {depthByte} rate {rateByte}");
 
         // Send on change, and otherwise at the keep-alive interval (so a lost packet is repaired and zeros keep arriving).
-        bool changed = intensity != lastSent;
+        bool changed = intensity != lastSent || extended != lastExtended || depthByte != lastDepthByte || rateByte != lastRateByte;
         bool keepAliveDue = keepAliveMs > 0f && sinceSend * 1000f >= keepAliveMs;
         if (!changed && !keepAliveDue) return;
         lastSent = intensity;
+        lastExtended = extended;
+        lastDepthByte = depthByte;
+        lastRateByte = rateByte;
         sinceSend = 0f;
-        Send((byte)intensity);
+        Send(intensity, extended, beatDepth, beatRate);
     }
 
-    private void Send(byte intensity)
+    private void Send(int intensity, bool extended, float depth, float rateHz)
     {
-        packet[0] = intensity;
+        // The same buffer layout serves both: byte 0 is the intensity either way, so a 1-byte send is just a shorter packet.
+        Haptics.Dsp.BeatPacket.Write(packet, intensity, depth, rateHz);
+        int length = extended ? Haptics.Dsp.BeatPacket.Size : 1;
         string error = null;
         for (int i = 0; i < endpoints.Length; i++)
         {
-            try { udpClient.Send(packet, 1, endpoints[i]); }
+            try { udpClient.Send(packet, length, endpoints[i]); }
             catch (Exception e) { error = $"{endpoints[i]}: {e.Message}"; } // keep going: the other bracelets still get their packet
         }
         // Log each distinct problem once, not 50 times per second.

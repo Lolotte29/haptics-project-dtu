@@ -38,6 +38,7 @@ Status: **done** = implemented and unit-tested on synthetic signals; **untested*
 | `Choir/` | `KeyEstimator.cs` | Slow histogram -> key (24 Temperley profiles, correlation) with switch hysteresis | done, tested on synthetic progressions |
 | `Choir/` | `HarmonicTension.cs` | Tonal Interval Space tension (Bernardes et al. 2016): 12-bin pitch-class vector -> DFT coefficients 1..6 with consonance weights; tension = 0.6 x distance to the key's tonic triad + 0.4 x dissonance (short vector). No chord labels. Constants are first guesses | done, synthetic tests only |
 | `Choir/` | `HarmonyTracker.cs` | `IHarmonyAnalyzer`: per voice smooth pitch, subtract drift, round with hysteresis, fill histograms, estimate key. Set on `ChoirHost` via *Estimate Key* | done, synthetic tests only; not yet checked on real recordings |
+| `Haptic/` | `BeatPacket.cs` | 3-byte UDP packet (intensity, beat depth, beat rate) for firmware that makes the beating itself; byte 0 is the plain 1-byte level, so old firmware still works | done, tested |
 | `Haptic/` | `HapticPacket.cs` | 5-byte UDP packet (sequence + envelope) of the older `UdpHapticSender`; the bridge in use sends 1 byte, see [esp-wifi.md](esp-wifi.md) | done |
 | `Choir/` | `IHarmonyAnalyzer.cs` | Plug-in point for harmony analysis, `Analyze(voices, dtSeconds)`; set as `Choir.HarmonyAnalyzer`. Implemented by `HarmonyTracker` | done |
 

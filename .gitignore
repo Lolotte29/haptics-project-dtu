@@ -43,6 +43,9 @@ Thumbs.db
 .vs/
 .idea/
 
+# Wi-Fi credentials for the ESP sketches (copy secrets.example.h to secrets.h)
+tools/**/secrets.h
+
 # Local-only
 *.local
 out/
