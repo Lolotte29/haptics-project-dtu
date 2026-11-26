@@ -33,11 +33,14 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
              "and keeps the ESP's safety timeout from firing during a steady note. 0 = send only on change.")]
     [Min(0f)] public float keepAliveMs = 100f;
 
-    public enum HapticSource { Envelope, Harmony }
+    // New values are appended so numbers saved in a scene keep their meaning.
+    public enum HapticSource { Envelope, Harmony, EnvelopeBeat }
 
     [Header("Source (can be switched while playing)")]
-    [Tooltip("Envelope: loudness + spectral flux + onset punch (as before). Harmony: the harmonic tension of the voices " +
-             "(0 = calm chord in the key, 1 = tense), only while something is sung. Needs Estimate Key on the ChoirHost.")]
+    [Tooltip("Envelope: loudness + spectral flux + onset punch (as before). " +
+             "Harmony: the harmonic tension of the voices (0 = calm chord in the key, 1 = tense), only while something is sung. " +
+             "EnvelopeBeat: the envelope, with a beating (amplitude wobble) on top whose depth and speed grow with the tension; " +
+             "calm harmony = plain envelope, no louder than the envelope. Harmony and EnvelopeBeat need Estimate Key on the ChoirHost.")]
     public HapticSource source = HapticSource.Envelope;
     [Tooltip("Buttons in the Game view to switch the source and a line showing the value sent.")]
     public bool showControls = true;
@@ -53,6 +56,17 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
     [Tooltip("The tension already lags about 0.5 s, so these are slower than the envelope smoothing.")]
     public float harmonyAttackMs = 200f;
     public float harmonyReleaseMs = 600f;
+
+    [Header("Beating (EnvelopeBeat source)")]
+    [Range(0f, 1f)] [Tooltip("Tension below this gives no beating at all (plain envelope).")]
+    public float beatThreshold = 0.15f;
+    [Range(0f, 1f)] [Tooltip("How deep the dips go at full tension: 0.7 = the level drops to 30% of the envelope at the bottom of each beat. Peaks always reach the envelope.")]
+    public float beatMaxDepth = 0.7f;
+    [Tooltip("Beating speed at tension 0 and at tension 1. Keep the top below about a quarter of the send rate.")]
+    public float beatRateMinHz = 3f;
+    public float beatRateMaxHz = 12f;
+    [Tooltip("Smoothing of the tension used here, so the depth and speed do not jump.")]
+    public float beatTensionSmoothMs = 300f;
 
     [Header("Feature Weights")]
     public float envelopeWeight = 1.0f;
@@ -80,6 +94,7 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
     private float smoothed, onsetEnv;
     private int lastSent = -1;          // -1 = nothing sent yet, so the first value always goes out
     private int currentIntensity;       // latest computed value, for the on-screen line
+    private float tensionSmoothed, beatPhase, beatDepth, beatRate;
     private string loggedError;
     private readonly byte[] packet = new byte[1];
 
@@ -182,6 +197,19 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
         onsetEnv = Mathf.Max(onsetEnv * Mathf.Exp(-dt / Mathf.Max(0.0001f, onsetHoldMs / 1000f)), mix.Onset ? 1f : 0f);
 
         float level = Mathf.Clamp01(smoothed + (harmony ? 0f : onsetEnv * onsetBonus));
+
+        if (source == HapticSource.EnvelopeBeat)
+        {
+            // Beating: raised-cosine amplitude modulation of the envelope level. Depth and speed follow the (smoothed) tension;
+            // the modulation only removes from the level, so the result never exceeds the plain envelope and is 0 when it is 0.
+            float tension = choirHost.Harmony.Tension;
+            tensionSmoothed += (tension - tensionSmoothed) * (1f - Mathf.Exp(-dt / Mathf.Max(0.0001f, beatTensionSmoothMs / 1000f)));
+            beatDepth = beatMaxDepth * Mathf.Clamp01((tensionSmoothed - beatThreshold) / Mathf.Max(0.0001f, 1f - beatThreshold));
+            beatRate = Mathf.Lerp(beatRateMinHz, beatRateMaxHz, tensionSmoothed);
+            beatPhase = (beatPhase + beatRate * dt) % 1f;
+            level *= 1f - beatDepth * 0.5f * (1f - Mathf.Cos(2f * Mathf.PI * beatPhase));
+        }
+
         int intensity = Mathf.Clamp(Mathf.RoundToInt(level * maxIntensity), 0, maxIntensity);
         currentIntensity = intensity;
 
@@ -216,7 +244,7 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
         udpClient = null;
     }
 
-    private static readonly string[] SourceNames = { "Envelope", "Harmony" };
+    private static readonly string[] SourceNames = { "Envelope", "Harmony", "Env + beat" };
 
     void OnGUI()
     {
@@ -226,11 +254,12 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
         float y = Screen.height / scale - 64f;
 
         GUI.Label(new Rect(10, y, 100, 24), "Haptic source");
-        source = (HapticSource)GUI.Toolbar(new Rect(110, y, 180, 24), (int)source, SourceNames);
+        source = (HapticSource)GUI.Toolbar(new Rect(110, y, 270, 24), (int)source, SourceNames);
 
         string state = udpClient == null ? "NOT SENDING (no valid target)" : $"{endpoints.Length} target(s)";
-        string warn = source == HapticSource.Harmony && choirHost != null && !choirHost.HarmonyAvailable
+        string warn = source != HapticSource.Envelope && choirHost != null && !choirHost.HarmonyAvailable
             ? "   harmony analysis is OFF (tick Estimate Key on ChoirHost)" : "";
-        GUI.Label(new Rect(10, y + 24, 760, 24), $"{state}   sent {currentIntensity}/{maxIntensity}{warn}");
+        string beat = source == HapticSource.EnvelopeBeat ? $"   beat depth {beatDepth:0.00} @ {beatRate:0.0} Hz" : "";
+        GUI.Label(new Rect(10, y + 24, 760, 24), $"{state}   sent {currentIntensity}/{maxIntensity}{beat}{warn}");
     }
 }
