@@ -29,7 +29,7 @@ audio in (channel i = singer i)
         (exists up to here; YIN can be switched on/off per source, with any source count)
   -> chord recognition  : pitch classes of all voices -> chord                   (planned)
   -> pitch classes + key: HarmonyTracker (pitch smoothing, tuning drift, 12-bin histograms, Temperley key profiles)  (exists, synthetic tests only)
-  -> harmonic tension   : chord in key context -> tension 0..1                    (planned)
+  -> harmonic tension   : HarmonicTension, fast histogram in key context -> 0..1   (exists, untuned)
   -> haptic mapping     : tension + loudness -> one intensity + pulse -> Bluetooth (planned, last)
 ```
 
@@ -38,7 +38,7 @@ audio in (channel i = singer i)
 - `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
 - `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD), `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly) and `MultiClipInput` (one mono clip per singer, e.g. Dagstuhl ChoirSet stems, played and analysed on the audio clock; unverified in the editor). A live multi-mic adapter would be a sibling calling `ChoirHost.Push`.
 - `docs/`: `esp-wifi.md` (Wi-Fi link to the bracelets; Wi-Fi replaces Bluetooth), `unity-setup.md`, `mic-input.md` (input options for the supervisor), `concert-manual.md` (sound check and gains), `testing-features.md` (what to expect per feature).
-- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (74 tests).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (84 tests).
 
 ## Honest state
 
@@ -47,7 +47,7 @@ audio in (channel i = singer i)
 - The per-channel gain HUD (IMGUI) is covered by unit tests of `Choir` only; it has not been looked at in the editor.
 - Spectral descriptors follow the MathWorks definitions used by the RASTA toolbox (AAU). Its public code (razvysme/Unity3D_Spectral_Analysis) was reviewed twice and still not adopted. Licence: none in the repo; the user knows the author and considers it fine (get that in writing or a LICENSE file before relying on it). Static single-instance state would be acceptable if it only ran on the summed mix or a single source. Still blocking: `FixedUpdate` waits on `Task.Result` (main-thread stall), the audio thread contends on a lock while 16k samples are copied, the FFT is unwindowed and 16384 samples long (~340 ms, too laggy for haptics), the default 200 Hz low-pass distorts voice descriptors, centroid is smoothed over 1000 updates, "tilt" is really skewness, ZCR is in Hz, the bin range stops at fs/4, and it needs MathNet.Numerics (NuGet) and a MonoBehaviour, so it cannot live in the Unity-free `Dsp/` or be unit-tested. It is usable only as an offline cross-check of our numbers.
 - An earlier roughness (Plomp-Levelt) analyser and a haptic mapper were removed on purpose: too early. They are in git history before the "Trim Dsp to features + pitch" commit.
-- **Key estimation exists** (`HarmonyTracker`: fast and slow pitch-class histograms, tuning-drift tracker, Temperley profiles with hysteresis); verified on synthetic progressions only, not yet on the DCS recordings. Next: tension from the fast histogram and the key, with no chord labels (Tonal Interval Space distance, plan agreed but model not final).
+- **Key estimation exists** (`HarmonyTracker`: fast and slow pitch-class histograms, tuning-drift tracker, Temperley profiles with hysteresis); verified on synthetic progressions only, not yet on the DCS recordings. **Tension exists** (`HarmonicTension`, Tonal Interval Space, no chord labels: 0.6 x distance to the key's tonic triad + 0.4 x dissonance; constants are first guesses, synthetic tests only, not yet tuned on real recordings).
 - **Harmonic tension** (chords in a key context) is the main goal. Needs key estimation plus a model such as key-relative chord distance (Lerdahl) or the spiral array (Chew/Herremans). Design not chosen yet.
 - `AudioSourceInput` only sees one AudioSource's channels (Unity may down-mix), so true 4-mic input needs another adapter, e.g. keijiro/Lasp (Unlicense, desktop, per-device/channel input; multi-stream behaviour unverified).
 - **Test material and scope for harmony:** the demo uses the Dagstuhl ChoirSet (DCS) quartets (one synchronised mono file per singer, played through `MultiClipInput`); YIN was judged good on them by the user in the editor. The real choir will be classical too. Key and tension models are validated only for Western tonal music, so results on anything else are not meaningful. All harmony code is tested on synthetic progressions; behaviour on DCS needs checking in the HUD.

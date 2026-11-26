@@ -25,8 +25,9 @@ Test material for sections 2-5: Dagstuhl ChoirSet quartets via `MultiClipInput`.
 - [ ] Check the key and tuning readout on the Dagstuhl quartets in the editor; tune `SwitchSeconds`, histogram time constants and `MinEvidence` if it is slow or flips.
 
 ## 5. Harmonic tension
-- [ ] `HarmonicTension`: chord in key -> 0..1. Pick a model first (Lerdahl key-relative chord distance or spiral array, Chew/Herremans), note the choice in CLAUDE.md. Then extend `HarmonyFrame` with key and tension (already exposed as `Choir.Harmony`).
-- [ ] Show tension in the `ChoirHost` display (key and tuning are already there).
+- [x] `HarmonicTension` (model chosen: Tonal Interval Space, Bernardes et al. 2016, no chord labels). In `HarmonyFrame` (`Tension`, `TensionKeyDistance`, `TensionDissonance`). Synthetic tests only.
+- [ ] Tune the tension on the Dagstuhl quartets by ear: `KeyWeight`, `DissonanceFloor`, `FullDissonance`, `FullKeyDistance`, and the 0.5 s fast histogram (it delays chord changes by about that much). Decide smoothing before it drives the haptics.
+- [x] Key, tuning and tension are shown in the `ChoirHost` display (chord later).
 
 ## 6. Later, after tension works
 - [ ] Haptic mapping (tension + loudness -> intensity + onset pulse), smoothing.

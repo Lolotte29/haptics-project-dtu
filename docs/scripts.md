@@ -36,6 +36,7 @@ Status: **done** = implemented and unit-tested on synthetic signals; **untested*
 | `Choir/` | `PitchClassHistogram.cs` | 12-bin leaky histogram of pitch classes (fast ~0.5 s for the current harmony, slow ~10 s for the key) | done, tested |
 | `Choir/` | `TuningTracker.cs` | Slow, unwrapped feedback loop on the rounding error: follows choir tuning drift | done, tested |
 | `Choir/` | `KeyEstimator.cs` | Slow histogram -> key (24 Temperley profiles, correlation) with switch hysteresis | done, tested on synthetic progressions |
+| `Choir/` | `HarmonicTension.cs` | Tonal Interval Space tension (Bernardes et al. 2016): 12-bin pitch-class vector -> DFT coefficients 1..6 with consonance weights; tension = 0.6 x distance to the key's tonic triad + 0.4 x dissonance (short vector). No chord labels. Constants are first guesses | done, synthetic tests only |
 | `Choir/` | `HarmonyTracker.cs` | `IHarmonyAnalyzer`: per voice smooth pitch, subtract drift, round with hysteresis, fill histograms, estimate key. Set on `ChoirHost` via *Estimate Key* | done, synthetic tests only; not yet checked on real recordings |
 | `Haptic/` | `HapticPacket.cs` | 5-byte UDP packet (sequence + envelope) of the older `UdpHapticSender`; the bridge in use sends 1 byte, see [esp-wifi.md](esp-wifi.md) | done |
 | `Choir/` | `IHarmonyAnalyzer.cs` | Plug-in point for harmony analysis, `Analyze(voices, dtSeconds)`; set as `Choir.HarmonyAnalyzer`. Implemented by `HarmonyTracker` | done |
@@ -58,8 +59,7 @@ Tests: `dsp/Haptics.Dsp.Tests/` (`cd dsp && dotnet test Haptics.Dsp.Tests`), one
 | # | Script (in `Dsp/Choir/`) | Input -> output |
 |---|--------------------------|-----------------|
 | 2 | `ChordRecognizer.cs` | all `VoiceFrame` pitches -> chord (root + quality); implements `IHarmonyAnalyzer` |
-| 4 | `HarmonicTension.cs` | chord + key -> tension 0..1 |
-| 5 | extend `HarmonyFrame` | add tension next to the key and chord |
+| 4 | 5 | extend `HarmonyFrame` | add tension next to the key and chord |
 | 6 | `Dsp/Haptic/` | tension + loudness -> intensity/pulse, then the Bluetooth sink |
 
 Rules: one type per file, file named after the type, folder = pipeline stage.

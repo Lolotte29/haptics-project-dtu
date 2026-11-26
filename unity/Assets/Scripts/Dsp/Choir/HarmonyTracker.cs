@@ -3,7 +3,7 @@ using System;
 namespace Haptics.Dsp
 {
     /// <summary>
-    /// First harmony stage: turns the per-singer pitches into pitch classes and estimates the key.
+    /// First harmony stage: turns the per-singer pitches into pitch classes, estimates the key and computes harmonic tension.
     /// Per voiced singer and step: smooth the pitch (flattens vibrato), subtract the tracked tuning drift, round to a note
     /// with hysteresis, then add the pitch class to a fast histogram (current harmony, ~0.5 s) and a slow one (key, ~10 s)
     /// with weight = pitch confidence. Unvoiced singers add nothing, so breaths just let the histograms fade.
@@ -35,6 +35,7 @@ namespace Haptics.Dsp
         public PitchClassHistogram Slow { get; }
         public TuningTracker Tuning { get; } = new TuningTracker();
         public KeyEstimator Key { get; } = new KeyEstimator();
+        public HarmonicTension Tension { get; } = new HarmonicTension();
 
         public HarmonyTracker(int voiceCount, float fastSeconds = 0.5f, float slowSeconds = 10f)
         {
@@ -89,6 +90,7 @@ namespace Haptics.Dsp
 
             Tuning.Update(residualSum, weightSum, dtSeconds);
             var key = Key.Update(Slow.Bins, dtSeconds);
+            var tension = Tension.Compute(Fast.Bins, Fast.Total, key.Valid ? key.Tonic : -1, key.IsMinor);
 
             return new HarmonyFrame
             {
@@ -97,6 +99,9 @@ namespace Haptics.Dsp
                 KeyTonic = key.Valid ? key.Tonic : -1,
                 KeyIsMinor = key.IsMinor,
                 KeyConfidence = key.Valid ? key.Confidence : 0f,
+                Tension = tension.Tension,
+                TensionKeyDistance = tension.KeyDistance,
+                TensionDissonance = tension.Dissonance,
             };
         }
     }

@@ -55,3 +55,10 @@ Test with a **single voice first** (other channels muted or at -40 dB), then wit
 - "tuning" is the drift of the choir against equal temperament in cents; it should wander slowly (seconds), not jump. A large steady value is fine if the recording is tuned off A=440.
 - Relative major/minor (C major / A minor) can be confused when the piece avoids the leading tone. Confidence is then low.
 - Only meaningful for Western tonal music.
+
+## Tension (HUD "Tension" bar)
+- Rises on chords far from the key (dominant seventh, chromatic or foreign chords) and on clusters of close notes; low on the tonic triad. It follows the notes of the last half second, so it lags a chord change slightly.
+- The two parts are shown: "key" (how far the notes are from the tonic triad) and "dissonance" (how crowded the notes are). A single held note has high key distance unless it is the tonic: this is expected.
+- Before a key is found (first seconds) only the dissonance part is used.
+- Constants are first guesses; if it is always high or always flat on a recording, say so and they will be retuned.
+

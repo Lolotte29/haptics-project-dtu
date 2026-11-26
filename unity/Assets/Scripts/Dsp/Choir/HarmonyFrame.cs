@@ -15,5 +15,12 @@ namespace Haptics.Dsp
         public bool KeyIsMinor;
         /// <summary>0..1: how clearly the current key beats the best alternative.</summary>
         public float KeyConfidence;
+
+        /// <summary>Harmonic tension 0..1 of the last ~0.5 s of pitch classes in the current key (see <see cref="HarmonicTension"/>); 0 when nothing sounds.</summary>
+        public float Tension;
+        /// <summary>The key-distance part of <see cref="Tension"/>, 0..1.</summary>
+        public float TensionKeyDistance;
+        /// <summary>The dissonance part of <see cref="Tension"/>, 0..1.</summary>
+        public float TensionDissonance;
     }
 }

@@ -22,8 +22,8 @@ namespace Haptics.Dsp
     public sealed class KeyEstimator
     {
         // Temperley (CBMS) profiles, relative weight of each scale degree above the tonic (index 0 = tonic).
-        private static readonly double[] MajorProfile = { 5.0, 2.0, 3.5, 2.0, 4.5, 4.0, 2.0, 4.5, 2.0, 3.5, 1.5, 4.0 };
-        private static readonly double[] MinorProfile = { 5.0, 2.0, 3.5, 4.5, 2.0, 4.0, 2.0, 4.5, 3.5, 2.0, 1.5, 4.0 };
+        internal static readonly double[] MajorProfile = { 5.0, 2.0, 3.5, 2.0, 4.5, 4.0, 2.0, 4.5, 2.0, 3.5, 1.5, 4.0 };
+        internal static readonly double[] MinorProfile = { 5.0, 2.0, 3.5, 4.5, 2.0, 4.0, 2.0, 4.5, 3.5, 2.0, 1.5, 4.0 };
 
         /// <summary>Histogram total (weighted voice-seconds) needed before any key is reported.</summary>
         public float MinEvidence { get; set; } = 1f;

@@ -137,7 +137,7 @@ public class ChoirHost : MonoBehaviour
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
         var voices = _choir.Voices;
-        GUILayout.BeginArea(new Rect(10, 10, 580, 145 + 26 * voices.Length), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(10, 10, 580, 170 + 26 * voices.Length), GUI.skin.box);
         for (int i = 0; i < voices.Length; i++)
         {
             var v = voices[i];
@@ -171,6 +171,10 @@ public class ChoirHost : MonoBehaviour
                 ? $"{Names[h.KeyTonic]} {(h.KeyIsMinor ? "minor" : "major")} (confidence {h.KeyConfidence:0.00})"
                 : "-- (listening)";
             GUILayout.Label($"Key {key}   tuning {_harmony.Tuning.OffsetSemitones * 100.0:+0;-0;0} cents");
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Tension {h.Tension:0.00}  (key {h.TensionKeyDistance:0.00}, dissonance {h.TensionDissonance:0.00})", GUILayout.Width(330));
+            DrawBar(h.Tension, Color.Lerp(Color.green, Color.red, h.Tension), 150f);
+            GUILayout.EndHorizontal();
         }
         if (h.RootPitchClass >= 0)
             GUILayout.Label($"Chord root {Names[h.RootPitchClass]} ({h.Confidence:0.00})");
