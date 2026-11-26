@@ -22,6 +22,8 @@ namespace Haptics.Dsp
         private readonly float[] _meanSq;      // smoothed mean square per channel, after gain
         private readonly float _levelCoef;
         private int _voiceCount;
+        private int _sampleRate;
+        private long _framesSinceHarmony; // audio time since the last analyzer call
         private bool _featuresUpdated;
 
         /// <summary>Per-singer pitch; stays default (unvoiced) for sources whose pitch tracking is off.</summary>
@@ -41,7 +43,7 @@ namespace Haptics.Dsp
         public IHarmonyAnalyzer HarmonyAnalyzer { get; set; }
 
         /// <summary>Latest chord analysis; <see cref="HarmonyFrame.RootPitchClass"/> is -1 when none is available.</summary>
-        public HarmonyFrame Harmony { get; private set; } = new HarmonyFrame { RootPitchClass = -1 };
+        public HarmonyFrame Harmony { get; private set; } = new HarmonyFrame { RootPitchClass = -1, KeyTonic = -1 };
 
         /// <summary>Gain applied to the sum of channels. Default 1/sqrt(N) keeps power constant for uncorrelated voices.</summary>
         public float MixGain { get; set; }
@@ -85,6 +87,7 @@ namespace Haptics.Dsp
         {
             if (voiceCount < 1) throw new ArgumentOutOfRangeException(nameof(voiceCount));
             _voiceCount = voiceCount;
+            _sampleRate = sampleRate;
             Voices = new VoiceFrame[voiceCount];
             MixGain = 1f / (float)Math.Sqrt(voiceCount);
             _gains = new float[voiceCount];
@@ -133,6 +136,7 @@ namespace Haptics.Dsp
         public bool Process(float[] interleaved, int frames, int channels)
         {
             bool voicesUpdated = false;
+            _framesSinceHarmony += frames;
             _featuresUpdated = false;
             int used = Math.Min(channels, _voiceCount);
             for (int n = 0; n < frames; n++)
@@ -156,7 +160,10 @@ namespace Haptics.Dsp
             }
 
             if (voicesUpdated && HarmonyAnalyzer != null)
-                Harmony = HarmonyAnalyzer.Analyze(Voices);
+            {
+                Harmony = HarmonyAnalyzer.Analyze(Voices, (float)((double)_framesSinceHarmony / _sampleRate));
+                _framesSinceHarmony = 0;
+            }
             return voicesUpdated || _featuresUpdated;
         }
 

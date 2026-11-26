@@ -23,6 +23,10 @@ public class ChoirHost : MonoBehaviour
     [Tooltip("Channel RMS level that fills the HUD level bar. Typical sung level is about half of it.")]
     [SerializeField] private float meterFullScaleRms = 0.2f;
 
+    [Header("Harmony")]
+    [Tooltip("Estimate pitch classes, tuning drift and the key from the voices with YIN on (Western tonal music only). Shown in the HUD.")]
+    [SerializeField] private bool estimateKey = true;
+
     [Header("Amplitude envelope (FeatureFrame.Envelope)")]
     [Tooltip("How fast the envelope rises, in ms (time constant). Small = punchy. 0 = instant.")]
     [Min(0f)] [SerializeField] private float envelopeAttackMs = 5f;
@@ -30,6 +34,7 @@ public class ChoirHost : MonoBehaviour
     [Min(0f)] [SerializeField] private float envelopeReleaseMs = 100f;
 
     private Choir _choir;
+    private HarmonyTracker _harmony;
 
     public VoiceFrame[] Voices => _choir?.Voices;
 
@@ -49,6 +54,7 @@ public class ChoirHost : MonoBehaviour
     private void Awake()
     {
         _choir = new Choir(AudioSettings.outputSampleRate, voiceCount);
+        AttachHarmony();
         ApplyGains();
         ApplyPitchEnabled();
         ApplyEnvelope();
@@ -56,6 +62,12 @@ public class ChoirHost : MonoBehaviour
 
     // Editing the fields in the Inspector while playing takes effect immediately.
     private void OnValidate() => ApplyEnvelope();
+
+    private void AttachHarmony()
+    {
+        _harmony = estimateKey ? new HarmonyTracker(voiceCount) : null;
+        _choir.HarmonyAnalyzer = _harmony;
+    }
 
     private void ApplyEnvelope()
     {
@@ -93,6 +105,7 @@ public class ChoirHost : MonoBehaviour
     {
         var old = _choir;
         _choir = new Choir(sampleRate, voiceCount);
+        AttachHarmony();
         if (old != null)
         {
             for (int i = 0; i < voiceCount; i++)
@@ -124,7 +137,7 @@ public class ChoirHost : MonoBehaviour
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
         var voices = _choir.Voices;
-        GUILayout.BeginArea(new Rect(10, 10, 580, 120 + 26 * voices.Length), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(10, 10, 580, 145 + 26 * voices.Length), GUI.skin.box);
         for (int i = 0; i < voices.Length; i++)
         {
             var v = voices[i];
@@ -152,6 +165,13 @@ public class ChoirHost : MonoBehaviour
         GUILayout.Label($"Voiced {_choir.VoicedCount}/{voices.Length}");
         GUILayout.Label($"{(voices.Length == 1 ? "Source" : "Mix")}: centroid {_choir.Mix.SpectralCentroid:0} Hz   level {_choir.Mix.Rms:0.000}");
         var h = _choir.Harmony;
+        if (_harmony != null)
+        {
+            string key = h.KeyTonic >= 0
+                ? $"{Names[h.KeyTonic]} {(h.KeyIsMinor ? "minor" : "major")} (confidence {h.KeyConfidence:0.00})"
+                : "-- (listening)";
+            GUILayout.Label($"Key {key}   tuning {_harmony.Tuning.OffsetSemitones * 100.0:+0;-0;0} cents");
+        }
         if (h.RootPitchClass >= 0)
             GUILayout.Label($"Chord root {Names[h.RootPitchClass]} ({h.Confidence:0.00})");
         GUILayout.EndArea();

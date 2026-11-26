@@ -28,17 +28,17 @@ audio in (channel i = singer i)
   -> sum of channels    : level + spectral features (FeatureExtractor), once    -> Choir.Mix
         (exists up to here; YIN can be switched on/off per source, with any source count)
   -> chord recognition  : pitch classes of all voices -> chord                   (planned)
-  -> key estimation     : running key from chord/pitch history                    (planned)
+  -> pitch classes + key: HarmonyTracker (pitch smoothing, tuning drift, 12-bin histograms, Temperley key profiles)  (exists, synthetic tests only)
   -> harmonic tension   : chord in key context -> tension 0..1                    (planned)
   -> haptic mapping     : tension + loudness -> one intensity + pulse -> Bluetooth (planned, last)
 ```
 
-`Choir` wraps the voice stage: `Choir.Process(interleavedSamples, frames, channels)` fills `Choir.Voices`. There is no mode: YIN is switchable **per source** (`Choir.SetPitchEnabled(i, bool)`, default on, also for a single source; HUD toggle and `ChoirHost.pitchEnabled`). Sources with YIN off cost no YIN time and stay unvoiced in `Choir.Voices` (pitch is the only per-singer analysis), so the optional `IHarmonyAnalyzer` (chord recognition, not implemented yet) only ever sees the sources the user chose. Spectral features of the summed signal (`Choir.Mix`, gain 1/sqrt(N); one source = that channel) always run. Spectral features are deliberately never computed per singer. Planned stages go in `Dsp/Choir/`. Order and checklist: docs/roadmap.md.
+`Choir` wraps the voice stage: `Choir.Process(interleavedSamples, frames, channels)` fills `Choir.Voices`. There is no mode: YIN is switchable **per source** (`Choir.SetPitchEnabled(i, bool)`, default on, also for a single source; HUD toggle and `ChoirHost.pitchEnabled`). Sources with YIN off cost no YIN time and stay unvoiced in `Choir.Voices` (pitch is the only per-singer analysis), so the optional `IHarmonyAnalyzer` (`HarmonyTracker` is the implementation, switched on by `ChoirHost.estimateKey`; chord recognition is not implemented yet) only ever sees the sources the user chose. Spectral features of the summed signal (`Choir.Mix`, gain 1/sqrt(N); one source = that channel) always run. Spectral features are deliberately never computed per singer. Planned stages go in `Dsp/Choir/`. Order and checklist: docs/roadmap.md.
 
 - `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
-- `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD) `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly) and `MultiClipInput` (one mono clip per singer, e.g. Dagstuhl ChoirSet stems, played and analysed on the audio clock; unverified in the editor). A live multi-mic adapter would be a sibling calling `ChoirHost.Push`.
+- `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD), `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly) and `MultiClipInput` (one mono clip per singer, e.g. Dagstuhl ChoirSet stems, played and analysed on the audio clock; unverified in the editor). A live multi-mic adapter would be a sibling calling `ChoirHost.Push`.
 - `docs/`: `esp-wifi.md` (Wi-Fi link to the bracelets; Wi-Fi replaces Bluetooth), `unity-setup.md`, `mic-input.md` (input options for the supervisor), `concert-manual.md` (sound check and gains), `testing-features.md` (what to expect per feature).
-- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (54 tests).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (74 tests).
 
 ## Honest state
 
@@ -47,8 +47,10 @@ audio in (channel i = singer i)
 - The per-channel gain HUD (IMGUI) is covered by unit tests of `Choir` only; it has not been looked at in the editor.
 - Spectral descriptors follow the MathWorks definitions used by the RASTA toolbox (AAU). Its public code (razvysme/Unity3D_Spectral_Analysis) was reviewed twice and still not adopted. Licence: none in the repo; the user knows the author and considers it fine (get that in writing or a LICENSE file before relying on it). Static single-instance state would be acceptable if it only ran on the summed mix or a single source. Still blocking: `FixedUpdate` waits on `Task.Result` (main-thread stall), the audio thread contends on a lock while 16k samples are copied, the FFT is unwindowed and 16384 samples long (~340 ms, too laggy for haptics), the default 200 Hz low-pass distorts voice descriptors, centroid is smoothed over 1000 updates, "tilt" is really skewness, ZCR is in Hz, the bin range stops at fs/4, and it needs MathNet.Numerics (NuGet) and a MonoBehaviour, so it cannot live in the Unity-free `Dsp/` or be unit-tested. It is usable only as an offline cross-check of our numbers.
 - An earlier roughness (Plomp-Levelt) analyser and a haptic mapper were removed on purpose: too early. They are in git history before the "Trim Dsp to features + pitch" commit.
+- **Key estimation exists** (`HarmonyTracker`: fast and slow pitch-class histograms, tuning-drift tracker, Temperley profiles with hysteresis); verified on synthetic progressions only, not yet on the DCS recordings. Next: tension from the fast histogram and the key, with no chord labels (Tonal Interval Space distance, plan agreed but model not final).
 - **Harmonic tension** (chords in a key context) is the main goal. Needs key estimation plus a model such as key-relative chord distance (Lerdahl) or the spiral array (Chew/Herremans). Design not chosen yet.
 - `AudioSourceInput` only sees one AudioSource's channels (Unity may down-mix), so true 4-mic input needs another adapter, e.g. keijiro/Lasp (Unlicense, desktop, per-device/channel input; multi-stream behaviour unverified).
+- **Test material and scope for harmony:** the demo uses the Dagstuhl ChoirSet (DCS) quartets (one synchronised mono file per singer, played through `MultiClipInput`); YIN was judged good on them by the user in the editor. The real choir will be classical too. Key and tension models are validated only for Western tonal music, so results on anything else are not meaningful. All harmony code is tested on synthetic progressions; behaviour on DCS needs checking in the HUD.
 - YIN cost on the audio thread (4 voices x ~86 frames/s) is unmeasured.
 
 ## Rules for agents

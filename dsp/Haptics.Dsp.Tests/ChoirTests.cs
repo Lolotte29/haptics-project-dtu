@@ -186,7 +186,7 @@ public class ChoirTests
     private sealed class FakeHarmony : IHarmonyAnalyzer
     {
         public int Calls;
-        public HarmonyFrame Analyze(VoiceFrame[] voices)
+        public HarmonyFrame Analyze(VoiceFrame[] voices, float dtSeconds)
         {
             Calls++;
             return new HarmonyFrame { RootPitchClass = 0, Confidence = 1f };
@@ -196,9 +196,11 @@ public class ChoirTests
     private sealed class CountingHarmony : IHarmonyAnalyzer
     {
         public int Calls, LastVoiced;
-        public HarmonyFrame Analyze(VoiceFrame[] voices)
+        public double DtSum;
+        public HarmonyFrame Analyze(VoiceFrame[] voices, float dtSeconds)
         {
             Calls++;
+            DtSum += dtSeconds;
             LastVoiced = 0;
             foreach (var v in voices) if (v.Voiced) LastVoiced++;
             return new HarmonyFrame { RootPitchClass = 0, Confidence = 1f };
@@ -214,6 +216,15 @@ public class ChoirTests
         RunSines(choir, new[] { 262.0, 330.0, 392.0 }, new[] { 0.3f, 0.3f, 0.3f }, 1.0);
         Assert.True(harmony.Calls > 0);
         Assert.Equal(2, harmony.LastVoiced);
+    }
+
+    [Fact]
+    public void HarmonyReceivesTheAudioTimeSinceItsLastCall()
+    {
+        var harmony = new CountingHarmony();
+        var choir = new Choir(Sr, 1) { HarmonyAnalyzer = harmony };
+        RunSines(choir, new[] { 262.0 }, new[] { 0.3f }, 1.0);
+        Assert.InRange(harmony.DtSum, 0.9, 1.1); // about the audio time fed (1 s), give or take the last partial hop
     }
 
     [Fact]

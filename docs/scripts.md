@@ -31,9 +31,14 @@ Status: **done** = implemented and unit-tested on synthetic signals; **untested*
 | `Voice/` | `VoiceFrame.cs` | What is known about one singer: pitch and confidence (data) | done |
 | `Voice/` | `PitchTracker.cs` | Per-singer YIN pitch with a silence gate -> `VoiceFrame` | done |
 | `Choir/` | `Choir.cs` | Runs N `PitchTracker` (N >= 2) and one `FeatureExtractor` on the sum (or the single channel). Fills `Voices` (pitch), `Mix` (`FeatureFrame`), `Harmony` | done |
-| `Choir/` | `HarmonyFrame.cs` | Chord result (root pitch class, confidence); later key and tension | done (data) |
+| `Choir/` | `HarmonyFrame.cs` | Harmony result: chord root + confidence (root is -1 until chord recognition exists), key tonic / mode / confidence; later tension | done (data) |
+| `Choir/` | `PitchClass.cs` | Hz -> MIDI note, pitch class 0..11, cents off, note names | done, tested |
+| `Choir/` | `PitchClassHistogram.cs` | 12-bin leaky histogram of pitch classes (fast ~0.5 s for the current harmony, slow ~10 s for the key) | done, tested |
+| `Choir/` | `TuningTracker.cs` | Slow, unwrapped feedback loop on the rounding error: follows choir tuning drift | done, tested |
+| `Choir/` | `KeyEstimator.cs` | Slow histogram -> key (24 Temperley profiles, correlation) with switch hysteresis | done, tested on synthetic progressions |
+| `Choir/` | `HarmonyTracker.cs` | `IHarmonyAnalyzer`: per voice smooth pitch, subtract drift, round with hysteresis, fill histograms, estimate key. Set on `ChoirHost` via *Estimate Key* | done, synthetic tests only; not yet checked on real recordings |
 | `Haptic/` | `HapticPacket.cs` | 5-byte UDP packet (sequence + envelope) of the older `UdpHapticSender`; the bridge in use sends 1 byte, see [esp-wifi.md](esp-wifi.md) | done |
-| `Choir/` | `IHarmonyAnalyzer.cs` | Plug-in point for chord recognition; set as `Choir.HarmonyAnalyzer`. No implementation yet | interface only |
+| `Choir/` | `IHarmonyAnalyzer.cs` | Plug-in point for harmony analysis, `Analyze(voices, dtSeconds)`; set as `Choir.HarmonyAnalyzer`. Implemented by `HarmonyTracker` | done |
 
 ## Exists: `unity/Assets/Scripts/Unity/`
 
@@ -52,11 +57,9 @@ Tests: `dsp/Haptics.Dsp.Tests/` (`cd dsp && dotnet test Haptics.Dsp.Tests`), one
 
 | # | Script (in `Dsp/Choir/`) | Input -> output |
 |---|--------------------------|-----------------|
-| 1 | `PitchClass.cs` | pitch in Hz -> note, pitch class 0..11, cents off |
 | 2 | `ChordRecognizer.cs` | all `VoiceFrame` pitches -> chord (root + quality); implements `IHarmonyAnalyzer` |
-| 3 | `KeyEstimator.cs` | chord / pitch-class history -> running key (tonic + mode) |
 | 4 | `HarmonicTension.cs` | chord + key -> tension 0..1 |
-| 5 | extend `HarmonyFrame` | add key and tension next to the chord; exposed as `Choir.Harmony` |
+| 5 | extend `HarmonyFrame` | add tension next to the key and chord |
 | 6 | `Dsp/Haptic/` | tension + loudness -> intensity/pulse, then the Bluetooth sink |
 
 Rules: one type per file, file named after the type, folder = pipeline stage.

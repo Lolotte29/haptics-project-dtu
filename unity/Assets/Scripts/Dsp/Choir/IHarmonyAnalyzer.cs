@@ -4,9 +4,10 @@ namespace Haptics.Dsp
     /// Chord recognition / harmonic analysis over per-voice pitches. Plugged into <see cref="Choir"/>.
     /// Sources with pitch tracking switched off arrive unvoiced, so implementations only consider voiced entries.
     /// Implementations must not allocate in <see cref="Analyze"/>.
+    /// <paramref name="dtSeconds"/> is the audio time since the previous call (calls are not evenly spaced).
     /// </summary>
     public interface IHarmonyAnalyzer
     {
-        HarmonyFrame Analyze(VoiceFrame[] voices);
+        HarmonyFrame Analyze(VoiceFrame[] voices, float dtSeconds);
     }
 }

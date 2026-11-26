@@ -48,3 +48,10 @@ Test with a **single voice first** (other channels muted or at -40 dB), then wit
 | Pitch always an octave off | Voice outside the YIN search range (100-1100 Hz by default). |
 | Only voice 1 (and 2) respond | The input adapter only delivers 1-2 channels; see [mic-input.md](mic-input.md). |
 | The mix level is dominated by one singer | Lower that channel's gain with `-`. |
+
+## Key and tuning (HUD line "Key ... tuning ...")
+- Needs YIN on for at least some voices. It reads "-- (listening)" until about a second of pitched singing has been heard.
+- With a tonal piece (e.g. the Dagstuhl quartets) the key should settle within roughly 5-10 s and stay put. A key that flips repeatedly means the piece is ambiguous or the pitch is unstable: look at the voices' note names first.
+- "tuning" is the drift of the choir against equal temperament in cents; it should wander slowly (seconds), not jump. A large steady value is fine if the recording is tuned off A=440.
+- Relative major/minor (C major / A minor) can be confused when the piece avoids the leading tone. Confidence is then low.
+- Only meaningful for Western tonal music.
