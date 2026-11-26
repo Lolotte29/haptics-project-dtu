@@ -20,9 +20,10 @@
 #include <Wire.h>
 #include <math.h>
 #include <Adafruit_DRV2605.h>
-#include "secrets.h"   // defines WIFI_SSID and WIFI_PASSWORD
 
 // ---------- Wi-Fi / network ----------
+const char* ssid     = "LOIC_LAISNEY 5613";
+const char* password = "2320t6E*";
 const int localPort = 4210;
 
 // ---------- Pins & multiplexer ----------
@@ -134,7 +135,7 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
