@@ -64,7 +64,7 @@ The 0.5 s histogram is the one smoothing of the tension. Before this clean-up it
 | Harmony source | Harmony Base, Harmony Gain | 0.25, 1 | Intensity on a calm chord, tension scaling. The silence cut reuses Noise Gate |
 | Beating | Beat On Esp, Threshold, Max Depth, Rate Min / Max Hz | off, 0.15, 0.7, 3 / 12 | See below |
 
-### ESP firmware (`tools/beetle_wifi_beating`)
+### ESP firmware (`tools/beetle_wifi_beating.ino`)
 `UPDATE_US` 2000 (500 Hz actuator update), `TIMEOUT_MS` 300 (off if no packet), actuator drive: open-loop 170 Hz (`OL_LRA_PERIOD` 60), `OD_CLAMP` 91 (about 2.0 V). The older `beetle_wifi_unity.ino` has the same drive settings and no timeout.
 
 ## Beating: where it is made
