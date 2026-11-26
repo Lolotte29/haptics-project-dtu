@@ -14,10 +14,9 @@ public class FeatureVisualizer : MonoBehaviour
     [Tooltip("Samples kept per plot (one per rendered frame; about 4 s at 60 fps).")]
     [SerializeField] private int historyLength = 256;
     [SerializeField] private int panelHeight = 56;
-    [Tooltip("Size multiplier. 0 = automatic from screen height.")]
+    [Tooltip("Maximum size multiplier. 0 = automatic from screen height. The plots shrink further if needed to fit " +
+             "next to the ChoirHost HUD (they start to its right, never under it).")]
     [SerializeField] private float uiScale = 0f;
-    [Tooltip("Left edge of the plots in unscaled pixels; leaves room for the ChoirHost HUD.")]
-    [SerializeField] private float leftOffset = 380f;
 
     private sealed class Panel
     {
@@ -221,23 +220,35 @@ public class FeatureVisualizer : MonoBehaviour
         for (int x = 0; x < width; x++) px[y * width + x] = Grid;
     }
 
+    /// <summary>Hotkey in the Game view: G shows or hides the plots.</summary>
     private void OnGUI()
     {
+        var e = Event.current;
+        if (e.type == EventType.KeyDown && e.keyCode == KeyCode.G) { show = !show; e.Use(); }
         if (!show || _panels == null) return;
+        HudStyle.Apply();
         if (_label == null)
             _label = new GUIStyle(GUI.skin.label) { fontSize = 11, padding = new RectOffset(2, 2, 0, 0) };
 
-        float scale = uiScale > 0f ? uiScale : Mathf.Max(1f, Screen.height / 540f);
-        GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-
         const float labelHeight = 15f;
-        const int columns = 2;
         float plotW = _panels[0].Tex.width;
         float cellW = plotW + 8f;
         float cellH = panelHeight + labelHeight + 6f;
 
+        // Fit the plots into the free area to the right of the HUD: pick 2 columns or 1, whichever allows the larger scale.
+        float baseScale = uiScale > 0f ? uiScale : Mathf.Max(1f, Screen.height / 540f);
+        float hudRightPx = _host != null ? _host.HudRightEdgePx : 0f;
+        float freeW = Mathf.Max(100f, Screen.width - hudRightPx - 8f);
+        int columns = 2;
+        float scale = FitScale(baseScale, freeW, columns, cellW, cellH, labelHeight);
+        float oneColScale = FitScale(baseScale, freeW, 1, cellW, cellH, labelHeight);
+        if (oneColScale > scale * 1.25f) { columns = 1; scale = oneColScale; } // only worth it if clearly larger
+        GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+        float left = hudRightPx / scale + 8f;
+
         // Legend: singer colours apply to the pitch plot only; the other plots are the mix (white).
-        float lx = leftOffset;
+        GUI.Box(new Rect(left - 3f, 2f, _voiceCount * 44f + 150f, labelHeight + 4f), GUIContent.none);
+        float lx = left;
         for (int s = 0; s < _voiceCount; s++)
         {
             _label.normal.textColor = _voiceColors[s];
@@ -251,13 +262,25 @@ public class FeatureVisualizer : MonoBehaviour
         {
             var panel = _panels[p];
             int col = p % columns, row = p / columns;
-            float x = leftOffset + col * cellW;
+            float x = left + col * cellW;
             float y = 4f + labelHeight + row * cellH;
 
+            // Dark strip behind the title so it is readable on any background.
+            GUI.Box(new Rect(x - 2f, y - 1f, plotW + 4f, labelHeight + 2f), GUIContent.none);
             _label.normal.textColor = Color.white;
             string range = panel.Signed ? $"+-{panel.Hi:0.##}" : $"{panel.Lo:0.##}..{panel.Hi:0.##}";
             GUI.Label(new Rect(x, y, plotW, labelHeight), $"{panel.Name}   {range}", _label);
             GUI.DrawTexture(new Rect(x, y + labelHeight, plotW, panelHeight), panel.Tex);
         }
+    }
+
+    // Largest scale (up to baseScale) at which `columns` columns of plots fit in the free width and the screen height.
+    private float FitScale(float baseScale, float freeWidthPx, int columns, float cellW, float cellH, float labelHeight)
+    {
+        int rows = (_panels.Length + columns - 1) / columns;
+        float needW = 8f + columns * cellW;                 // unscaled width including the gap to the HUD
+        float needH = 4f + labelHeight + rows * cellH;      // unscaled height
+        float s = Mathf.Min(baseScale, freeWidthPx / needW, Screen.height / needH);
+        return Mathf.Max(0.4f, s);
     }
 }

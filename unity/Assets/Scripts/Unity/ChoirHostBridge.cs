@@ -264,9 +264,11 @@ public class ChoirHapticAdvancedBridge : MonoBehaviour
     void OnGUI()
     {
         if (!showControls) return;
+        HudStyle.Apply();
         float scale = Mathf.Max(1f, Screen.height / 540f);
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
         float y = Screen.height / scale - 64f;
+        GUI.Box(new Rect(6, y - 4, Mathf.Min(660f, Screen.width / scale - 12f), 56f), GUIContent.none); // dark panel behind the controls
 
         GUI.Label(new Rect(10, y, 100, 24), "Haptic source");
         source = (HapticSource)GUI.Toolbar(new Rect(110, y, 270, 24), (int)source, SourceNames);

@@ -53,3 +53,9 @@ When you add scripts or scenes in Unity, commit them together with their `.meta`
 1. Import the 4 mono WAVs (one per singer, same sample rate) into `Assets/`. In each clip's import settings set **Load Type = Decompress On Load**.
 2. On the `Input` object (or a new one) add **MultiClipInput**, assign *Host* (ChoirHost) and drag the 4 clips into *Clips* in voice order. Use the same microphone type for every singer (e.g. the dynamic or headset track, not the larynx one).
 3. Disable the *AudioSourceInput* component so only one input feeds the host. Press Play: you hear the quartet (*Monitor*), and the HUD shows per-voice pitch, level and gains.
+
+## HUD and plots
+- The ChoirHost HUD (top left) and the plots (to its right) use a dark panel style (`HudStyle`) and a dark camera background, so the text stays readable. The plots shrink to fit the free space and never go under the HUD.
+- In the Game view press **H** to hide or show the HUD and **G** to hide or show the plots.
+- Per-voice pitch range: *Pitch Min Hz* / *Pitch Max Hz* on the ChoirHost (a bass voice needs about 60-65 Hz as its minimum). Changes apply when you press Play.
+

@@ -34,6 +34,8 @@ The 0.5 s histogram is the one smoothing of the tension. Before this clean-up it
 | Voice Count | 4 (scene) | Channels / singers |
 | Gain Db (per voice, also HUD +/-, saved) | 0 | Trim per channel before everything; **the main knob when the signal is too quiet** |
 | Pitch Enabled (per voice, HUD) | on | YIN per voice |
+| Pitch Min Hz / Pitch Max Hz (per voice) | 65 / 1100 | YIN search range per voice, applied at Play. Bass about 60-65 (D2 = 73 Hz), tenor 100, alto 150, soprano 200; lower costs CPU and risks octave errors, so raise it for the higher voices |
+| Dark Background | on | Dark camera colour at Play so the HUD is readable (the scene file is not changed) |
 | Estimate Key | on | Switches the harmony analysis on (key, tension) |
 | Envelope Attack / Release Ms | 5 / 10 | Loudness follower |
 | Meter Full Scale Rms, Hud Scale | 0.2, auto | HUD display only |
@@ -42,7 +44,7 @@ The 0.5 s histogram is the one smoothing of the tension. Before this clean-up it
 | Where | Parameter | Default |
 |---|---|---|
 | PitchTracker | SilenceRms / MinPitchConfidence | 0.01 / 0.7 |
-| Yin | search range | about 100-1100 Hz |
+| Yin | search range | per voice (see Pitch Min/Max Hz above); the analysis window is at least 768 samples and at least one period of the minimum |
 | FeatureExtractor | FFT 1024, hop 512 (about 21 ms at 48 kHz); onset Sensitivity / MinFlux / RefractoryFrames | 1.5 / 0.02 / 4 |
 | HarmonyTracker | PitchSmoothSeconds / HysteresisSemitones / HoldSeconds | 0.08 / 0.15 / 0.15 |
 | HarmonyTracker | fast / slow histogram time constants | 0.5 s / 10 s |

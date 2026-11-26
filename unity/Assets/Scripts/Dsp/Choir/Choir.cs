@@ -83,7 +83,11 @@ namespace Haptics.Dsp
             }
         }
 
-        public Choir(int sampleRate, int voiceCount, int hopSize = 512)
+        /// <summary>
+        /// <paramref name="pitchMinHz"/> / <paramref name="pitchMaxHz"/>: optional pitch range per voice (YIN search range).
+        /// Missing or non-positive entries use 100 / 1100 Hz. The ranges are fixed for the life of the Choir.
+        /// </summary>
+        public Choir(int sampleRate, int voiceCount, int hopSize = 512, float[] pitchMinHz = null, float[] pitchMaxHz = null)
         {
             if (voiceCount < 1) throw new ArgumentOutOfRangeException(nameof(voiceCount));
             _voiceCount = voiceCount;
@@ -102,7 +106,20 @@ namespace Haptics.Dsp
             _onFeatures = f => { Mix = f; _featuresUpdated = true; }; // allocated once
 
             _trackers = new PitchTracker[voiceCount];
-            for (int i = 0; i < voiceCount; i++) _trackers[i] = new PitchTracker(sampleRate, hopSize);
+            for (int i = 0; i < voiceCount; i++)
+            {
+                float lo = pitchMinHz != null && i < pitchMinHz.Length && pitchMinHz[i] > 0f ? pitchMinHz[i] : 100f;
+                float hi = pitchMaxHz != null && i < pitchMaxHz.Length && pitchMaxHz[i] > 0f ? pitchMaxHz[i] : 1100f;
+                if (!(hi > lo) || sampleRate / hi < 2f) { lo = 100f; hi = 1100f; } // nonsense from a settings field: use the defaults
+                _trackers[i] = new PitchTracker(sampleRate, hopSize, lo, hi);
+            }
+        }
+
+        /// <summary>The pitch range (Hz) searched for voice <paramref name="voice"/>.</summary>
+        public void GetPitchRange(int voice, out float minHz, out float maxHz)
+        {
+            minHz = _trackers[voice].MinHz;
+            maxHz = _trackers[voice].MaxHz;
         }
 
         /// <summary>Whether YIN runs on source <paramref name="voice"/> (default true for every source).</summary>

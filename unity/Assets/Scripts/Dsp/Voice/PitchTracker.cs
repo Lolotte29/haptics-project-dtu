@@ -19,11 +19,26 @@ namespace Haptics.Dsp
 
         public VoiceFrame Latest { get; private set; }
 
-        public PitchTracker(int sampleRate, int hopSize = 512)
+        /// <summary>Lowest pitch this tracker can report in Hz (set in the constructor; the YIN window is sized from it).</summary>
+        public float MinHz { get; }
+        /// <summary>Highest pitch this tracker can report in Hz.</summary>
+        public float MaxHz { get; }
+
+        /// <summary>
+        /// <paramref name="minHz"/>/<paramref name="maxHz"/> is the pitch range searched. A lower minimum costs more CPU (the search
+        /// grows with 1/minHz) and a wider range makes octave errors more likely, so give each voice only the range it needs
+        /// (e.g. bass about 60-500 Hz, soprano about 200-1100 Hz). The analysis window grows to at least one period of the minimum.
+        /// </summary>
+        public PitchTracker(int sampleRate, int hopSize = 512, float minHz = 100f, float maxHz = 1100f)
         {
             if (hopSize <= 0) throw new ArgumentOutOfRangeException(nameof(hopSize));
+            if (!(minHz > 0f) || !(maxHz > minHz)) throw new ArgumentOutOfRangeException(nameof(minHz), "need 0 < minHz < maxHz");
+            if (sampleRate / maxHz < 2f) throw new ArgumentOutOfRangeException(nameof(maxHz), "maxHz is too high for this sample rate");
             _hopSize = hopSize;
-            _yin = new Yin(sampleRate);
+            MinHz = minHz;
+            MaxHz = maxHz;
+            int window = Math.Max(768, (int)(sampleRate / minHz));
+            _yin = new Yin(sampleRate, window, minHz, maxHz);
             _ring = new float[_yin.BufferSize];
             _linear = new float[_yin.BufferSize];
         }

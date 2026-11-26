@@ -38,7 +38,7 @@ audio in (channel i = singer i)
 - `unity/Assets/Scripts/Dsp/` (subfolders Core/Voice/Choir, see docs/scripts.md; next steps in docs/roadmap.md): Unity-free (own asmdef, `noEngineReferences`). Single source of truth.
 - `unity/Assets/Scripts/Unity/`: `ChoirHost` (owns the pipeline, HUD), `AudioSourceInput` (feeds an AudioSource clip, or reads a mic/VB-Cable capture device directly) and `MultiClipInput` (one mono clip per singer, e.g. Dagstuhl ChoirSet stems, played and analysed on the audio clock; unverified in the editor). A live multi-mic adapter would be a sibling calling `ChoirHost.Push`.
 - `docs/`: `esp-wifi.md` (Wi-Fi link to the bracelets; Wi-Fi replaces Bluetooth), `unity-setup.md`, `mic-input.md` (input options for the supervisor), `concert-manual.md` (sound check and gains), `testing-features.md` (what to expect per feature).
-- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (101 tests).
+- `dsp/`: builds those files as `netstandard2.1` and tests them with xUnit (114 tests).
 
 ## Honest state
 
@@ -51,6 +51,7 @@ audio in (channel i = singer i)
 - Alternatives to the current tension model, if it proves weak: key-relative chord distance (Lerdahl) or the spiral array (Chew/Herremans); both need chord labels or extra geometry.
 - `AudioSourceInput` only sees one AudioSource's channels (Unity may down-mix), so true 4-mic input needs another adapter, e.g. keijiro/Lasp (Unlicense, desktop, per-device/channel input; multi-stream behaviour unverified).
 - **Test material and scope for harmony:** the demo uses the Dagstuhl ChoirSet (DCS) quartets (one synchronised mono file per singer, played through `MultiClipInput`); YIN was judged good on them by the user in the editor. The real choir will be classical too. Key and tension models are validated only for Western tonal music, so results on anything else are not meaningful. All harmony code is tested on synthetic progressions; behaviour on DCS needs checking in the HUD.
+- **YIN range is per voice** (`ChoirHost` Pitch Min/Max Hz, default 65-1100 Hz for every voice so a bass is tracked; a lower minimum costs more CPU and risks octave errors, so raise it for higher voices). A low pitch needs a longer analysis window; tested on synthetic bass notes (65-82 Hz) only.
 - YIN cost on the audio thread (4 voices x ~86 frames/s) is unmeasured.
 
 ## Rules for agents

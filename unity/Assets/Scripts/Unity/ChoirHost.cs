@@ -12,14 +12,26 @@ public class ChoirHost : MonoBehaviour
     private const string GainKey = "choir.gainDb.";
 
     [SerializeField] private int voiceCount = 4;
+    [Header("Display")]
+    [Tooltip("Press H in the Game view to show or hide the HUD (and G for the plots).")]
     [SerializeField] private bool showHud = true;
     [Tooltip("HUD size multiplier. 0 = automatic from screen height; try 2-3 if the text is still small.")]
     [SerializeField] private float hudScale = 0f;
+    [Tooltip("Replace the bright default camera background with a dark one so the HUD text is readable. Applied at Play, the scene is not changed.")]
+    [SerializeField] private bool darkBackground = true;
+
+    [Header("Voices")]
 
     [Tooltip("Starting trim per channel in dB (a value saved from the HUD overrides it). Extra entries are ignored.")]
     [SerializeField] private float[] gainDb = new float[4];
     [Tooltip("Run pitch tracking (YIN) on each source at start; can be toggled in the HUD. Missing entries count as on. Harmony will only use sources that are on.")]
     [SerializeField] private bool[] pitchEnabled = { true, true, true, true };
+    [Tooltip("Lowest pitch YIN searches for, per voice, in Hz (same order as the channels; missing entries = 100). Bass needs about 60-65 " +
+             "(D2 is 73 Hz), tenor about 100, alto about 150, soprano about 200. A lower value costs more CPU and makes octave errors " +
+             "more likely, so raise it for the higher voices. Applied at Play.")]
+    [SerializeField] private float[] pitchMinHz = { 65f, 65f, 65f, 65f };
+    [Tooltip("Highest pitch YIN searches for, per voice, in Hz (missing entries = 1100). Soprano up to about 1100, bass about 500.")]
+    [SerializeField] private float[] pitchMaxHz = { 1100f, 1100f, 1100f, 1100f };
     [Tooltip("Channel RMS level that fills the HUD level bar. Typical sung level is about half of it.")]
     [SerializeField] private float meterFullScaleRms = 0.2f;
 
@@ -61,11 +73,20 @@ public class ChoirHost : MonoBehaviour
 
     private void Awake()
     {
-        _choir = new Choir(AudioSettings.outputSampleRate, voiceCount);
+        _choir = new Choir(AudioSettings.outputSampleRate, voiceCount, 512, pitchMinHz, pitchMaxHz);
         AttachHarmony();
         ApplyGains();
         ApplyPitchEnabled();
         ApplyEnvelope();
+    }
+
+    private void Start()
+    {
+        if (!darkBackground) return;
+        var cam = Camera.main;
+        if (cam == null) return;
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(0.06f, 0.07f, 0.09f);
     }
 
     // Editing the fields in the Inspector while playing takes effect immediately.
@@ -112,7 +133,7 @@ public class ChoirHost : MonoBehaviour
     public void Configure(int sampleRate)
     {
         var old = _choir;
-        _choir = new Choir(sampleRate, voiceCount);
+        _choir = new Choir(sampleRate, voiceCount, 512, pitchMinHz, pitchMaxHz);
         AttachHarmony();
         if (old != null)
         {
@@ -137,15 +158,25 @@ public class ChoirHost : MonoBehaviour
         _choir.Process(interleaved, frames, channels);
     }
 
+    /// <summary>Right edge of the HUD in screen pixels (0 when it is hidden). The plots use it to stay clear of the HUD.</summary>
+    public float HudRightEdgePx { get; private set; }
+
+    /// <summary>Hotkeys in the Game view: H hides or shows the HUD.</summary>
     private void OnGUI()
     {
-        if (!showHud || _choir == null) return;
+        var e = Event.current;
+        if (e.type == EventType.KeyDown && e.keyCode == KeyCode.H) { showHud = !showHud; e.Use(); }
+
+        if (!showHud || _choir == null) { HudRightEdgePx = 0f; return; }
+        HudStyle.Apply();
         // IMGUI is sized in pixels, so scale it up on high-resolution screens.
         float scale = hudScale > 0f ? hudScale : Mathf.Max(1f, Screen.height / 540f);
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
         var voices = _choir.Voices;
-        GUILayout.BeginArea(new Rect(10, 10, 580, 170 + 26 * voices.Length), GUI.skin.box);
+        const float hudWidth = 520f;
+        HudRightEdgePx = (10f + hudWidth) * scale;
+        GUILayout.BeginArea(new Rect(10, 10, hudWidth, 190 + 26 * voices.Length), GUI.skin.box);
         for (int i = 0; i < voices.Length; i++)
         {
             var v = voices[i];
@@ -186,17 +217,14 @@ public class ChoirHost : MonoBehaviour
         }
         if (h.RootPitchClass >= 0)
             GUILayout.Label($"Chord root {Names[h.RootPitchClass]} ({h.Confidence:0.00})");
+        GUILayout.Label("H: hide this panel   G: plots");
         GUILayout.EndArea();
     }
 
     private static void DrawBar(float fraction, Color color, float width)
     {
         Rect r = GUILayoutUtility.GetRect(width, 16f, GUILayout.Width(width));
-        GUI.Box(r, GUIContent.none);
-        var old = GUI.color;
-        GUI.color = color;
-        GUI.DrawTexture(new Rect(r.x, r.y, r.width * Mathf.Clamp01(fraction), r.height), Texture2D.whiteTexture);
-        GUI.color = old;
+        HudStyle.DrawBar(r, fraction, color);
     }
 
     private static readonly string[] Names = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
