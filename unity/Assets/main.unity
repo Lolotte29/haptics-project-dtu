@@ -154,12 +154,23 @@ MonoBehaviour:
   voiceCount: 4
   showHud: 1
   hudScale: 0
+  darkBackground: 1
   gainDb:
   - 0
   - 0
   - 0
   - 0
   pitchEnabled: 01010101y
+  pitchMinHz:
+  - 100
+  - 65
+  - 100
+  - 100
+  pitchMaxHz:
+  - 1100
+  - 1100
+  - 1100
+  - 1100
   meterFullScaleRms: 0.2
   estimateKey: 1
   envelopeAttackMs: 5
@@ -195,7 +206,6 @@ MonoBehaviour:
   historyLength: 256
   panelHeight: 56
   uiScale: 0
-  leftOffset: 380
 --- !u!114 &476623318
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -241,14 +251,14 @@ MonoBehaviour:
   beatThreshold: 0.15
   beatMaxDepth: 0.923
   beatRateMinHz: 3
-  beatRateMaxHz: 50
+  beatRateMaxHz: 15
   envelopeWeight: 1
   fluxWeight: 0.15
   onsetBonus: 0.35
   noiseGate: 0.0293
   gamma: 0.6
   masterGain: 1.5
-  maxIntensity: 110
+  maxIntensity: 61
   attackMs: 15
   releaseMs: 90
   onsetHoldMs: 60
