@@ -151,7 +151,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20146219858c8df4ba3f0156b4a8faba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChoirHost
-  voiceCount: 1
+  voiceCount: 4
   showHud: 1
   hudScale: 0
   gainDb:
@@ -161,6 +161,7 @@ MonoBehaviour:
   - 0
   pitchEnabled: 01010101y
   meterFullScaleRms: 0.2
+  estimateKey: 1
   envelopeAttackMs: 5
   envelopeReleaseMs: 10
 --- !u!4 &476623316
@@ -229,7 +230,9 @@ MonoBehaviour:
   choirHost: {fileID: 476623315}
   esp32IP: 192.168.137.208
   port: 4210
-  sendRateHz: 50
+  additionalTargets: []
+  sendRateHz: 100
+  keepAliveMs: 100
   envelopeWeight: 1
   fluxWeight: 0.15
   onsetBonus: 0.35
@@ -252,6 +255,7 @@ GameObject:
   - component: {fileID: 1040955606}
   - component: {fileID: 1040955605}
   - component: {fileID: 1040955604}
+  - component: {fileID: 1040955607}
   m_Layer: 0
   m_Name: Input
   m_TagString: Untagged
@@ -266,7 +270,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1040955603}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 24c7e26dc92e00446840679c6c5a2d44, type: 3}
   m_Name: 
@@ -386,6 +390,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1040955607
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040955603}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 708c22a2b1184914d9a8b8f106edb864, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MultiClipInput
+  host: {fileID: 476623315}
+  clips:
+  - {fileID: 8300000, guid: 51ab45c566cd41440a3129e9f1491641, type: 3}
+  - {fileID: 8300000, guid: e114465f6f42e6348b4207bae58276f6, type: 3}
+  - {fileID: 8300000, guid: 300de32717030cb43988351743b648de, type: 3}
+  - {fileID: 8300000, guid: 3e050547fffbcfb429af6636eb6f6aad, type: 3}
+  loop: 1
+  monitor: 1
+  monitorVolume: 0.8
+  monitorSpread: 0.5
 --- !u!1 &1075234233
 GameObject:
   m_ObjectHideFlags: 0
